@@ -1,0 +1,29 @@
+{
+  "name": "@ritma/api-contracts",
+  "version": "0.1.0",
+  "private": true,
+  "description": "HTTP API contracts shared between the Ritma backend and its clients.",
+  "license": "UNLICENSED",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint .",
+    "clean": "rm -rf dist .turbo"
+  },
+  "devDependencies": {
+    "@ritma/configs": "workspace:*",
+    "eslint": "^9.30.0",
+    "typescript": "^5.8.0"
+  }
+}

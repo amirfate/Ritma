@@ -1,0 +1,13 @@
+**/node_modules
+**/dist
+**/coverage
+**/.turbo
+.git
+.husky
+apps/android
+docs
+scripts
+.github
+**/.env
+**/.env.*
+!**/.env.example

@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+coverage/
+
+# Turborepo
+.turbo/
+
+# Husky internals
+.husky/_/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Editors and OS
+.idea/
+.vscode/
+*.swp
+.DS_Store

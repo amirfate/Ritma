@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 11 and below: cloud backups include all app data by default;
+     nothing is excluded yet. -->
+<full-backup-content />
