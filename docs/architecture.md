@@ -83,6 +83,18 @@ jobs.
 Dependency rule: `apps/*` may depend on `packages/*`; packages may depend on
 other packages; nothing depends on an app.
 
+## Locked Versions
+
+The toolchain is locked to the following versions. CI, the git hooks, and
+the local scripts all assume them; bumps land as dedicated `chore(deps)`
+changes.
+
+- Node.js: 22 (`.nvmrc`, `engines` in the root `package.json`)
+- pnpm: 10 (`packageManager` in the root `package.json`)
+- Java: 21 (CI Android job; Kotlin/Java bytecode still targets 17)
+- Gradle: 8.14.3 (`apps/android/gradle/wrapper/gradle-wrapper.properties`)
+- Kotlin: 2.2.20 (`apps/android/gradle/libs.versions.toml`)
+
 ## Build and CI
 
 - **TurboRepo** orchestrates `build`, `lint`, `typecheck`, and `test`

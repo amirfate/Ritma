@@ -6,7 +6,7 @@
 | -------------- | --------------- | ------------------------------------ |
 | Node.js        | 22.x            | See `.nvmrc`; `nvm use` picks it up  |
 | pnpm           | 10.x            | `corepack enable` installs it        |
-| JDK            | 17+             | Required for the Android build       |
+| JDK            | 21              | Required for the Android build       |
 | Android Studio | latest stable   | Recommended for Android development  |
 | Docker         | with Compose v2 | For the local postgres/redis/backend |
 
