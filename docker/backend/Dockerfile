@@ -4,7 +4,7 @@
 # Build stage: install workspace dependencies, build the backend and its
 # workspace packages, then produce a pruned production deployment.
 # ---------------------------------------------------------------------------
-FROM node:22-alpine AS build
+FROM node:26-alpine AS build
 
 ENV HUSKY=0
 RUN corepack enable
@@ -22,7 +22,7 @@ RUN pnpm --filter "@ritma/backend" --prod deploy --legacy /out
 # ---------------------------------------------------------------------------
 # Runtime stage: minimal image with production dependencies only.
 # ---------------------------------------------------------------------------
-FROM node:22-alpine AS runner
+FROM node:26-alpine AS runner
 
 ENV NODE_ENV=production
 ENV PORT=3000
