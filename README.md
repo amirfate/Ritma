@@ -48,6 +48,7 @@ docker compose -f infrastructure/docker/docker-compose.yml up -d
 
 - [Getting started](docs/getting-started.md)
 - [Architecture](docs/architecture.md)
+- [Database](docs/database.md)
 
 ## Quality gates
 

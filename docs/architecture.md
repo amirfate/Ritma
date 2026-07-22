@@ -84,11 +84,10 @@ Current modules:
 - `health` — liveness endpoint (`GET /health` → `{"status":"ok"}`),
   used by the Docker healthcheck and by orchestrators.
 
-The domain model (users, devices, artists, albums, tracks, lyrics,
-playlists, playlist_tracks, purchases, donations, wallets, settlements,
-invitations, playback_sessions, audit_logs) and the auth/catalog/
-streaming/commerce/invitation modules that implement the product are added
-by dedicated milestones, not part of repository scaffolding.
+The domain model is defined in `@ritma/database` (see
+[docs/database.md](database.md)); the auth/catalog/streaming/commerce/
+invitation modules that implement the product on top of it are added by
+dedicated milestones.
 
 ## Dashboard
 
@@ -108,8 +107,7 @@ as any other API client (`@ritma/api-contracts`).
   MinIO). Service-specific secrets are added by the milestone that
   introduces the code consuming them.
 - **`@ritma/database`** — the Prisma schema, migrations, and generated
-  client. The schema currently defines only the datasource/generator; the
-  domain model is a dedicated milestone.
+  client for the full domain model (see [docs/database.md](database.md)).
 - **`@ritma/design-system`** — design tokens consumed by tooling and
   mirrored by the Android theme (`ui/theme/Color.kt`, `Type.kt`).
 - **`@ritma/logger`** — a `pino`/`nestjs-pino` setup with redaction rules
