@@ -9,7 +9,7 @@ built with pnpm workspaces and TurboRepo.
 ```
 apps/android         Android app — Kotlin, Compose, Material 3, Hilt, MVVM
 apps/api             NestJS API — modular monolith
-apps/dashboard       Artist/Administrator web dashboard — React, Vite
+apps/dashboard       Artist/Administrator web dashboard — Next.js
 packages/api-contracts   Shared HTTP API contracts
 packages/config          Validated runtime environment configuration
 packages/database        Prisma schema, migrations, and generated client

@@ -5,7 +5,7 @@ import { type ReactElement } from 'react';
  * (upload, publish, metadata, pricing, reports, artist statistics/revenue)
  * are added in the milestone that implements the admin/artist surface.
  */
-export function App(): ReactElement {
+export default function DashboardPage(): ReactElement {
   return (
     <main>
       <h1>Ritma Dashboard</h1>

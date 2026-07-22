@@ -24,7 +24,7 @@ Android App → Nginx → NestJS API → PostgreSQL
 ├── apps/
 │   ├── android/          # Android app (Kotlin, Jetpack Compose, Material 3)
 │   ├── api/               # NestJS application (modular monolith)
-│   └── dashboard/         # Artist/Administrator web dashboard (React, Vite)
+│   └── dashboard/         # Artist/Administrator web dashboard (Next.js)
 ├── packages/
 │   ├── api-contracts/    # HTTP API contracts shared by the API and its clients
 │   ├── config/            # Validated runtime environment configuration
@@ -41,11 +41,9 @@ Android App → Nginx → NestJS API → PostgreSQL
 └── .github/              # CI workflows, Dependabot, code owners
 ```
 
-Note on `apps/dashboard`'s stack: the specification names a stack for
-Android (Kotlin/Compose) and the API (NestJS/Prisma) but is silent on the
-dashboard. React + Vite + TypeScript was chosen as the simplest option
-compatible with the rest of the workspace (same language, same tooling
-presets); it is an implementation choice, not a locked requirement.
+`apps/dashboard`'s stack (Next.js) is a locked requirement of the
+specification, alongside Kotlin/Compose for Android and NestJS/Prisma for
+the API.
 
 ## Android app
 
