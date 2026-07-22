@@ -310,6 +310,12 @@ model Donation {
 /// The artist's earnings ledger (accumulated purchase share + donations
 /// awaiting manual settlement). This is not a listener/user wallet — the
 /// spec explicitly forbids one; `GET /wallet` reads this per artist.
+///
+/// `balance` can only ever be increased by a Purchase or a Donation, and
+/// only ever decreased by a Settlement — there is no top-up path. A
+/// database CHECK constraint (`wallets_balance_non_negative`, added in the
+/// `wallet_ledger_invariants` migration) additionally guarantees the
+/// balance never goes negative.
 model Wallet {
   id        String   @id @default(cuid())
   artistId  String   @unique @map("artist_id")
@@ -323,7 +329,12 @@ model Wallet {
 }
 
 /// A manual settlement payout recorded by an administrator. There is no
-/// automated payout processor in scope.
+/// automated payout processor in scope: `recordedById` is a required,
+/// non-nullable reference to the administrator who performed it, so every
+/// row is attributable to a human action, never a scheduled job. A
+/// database CHECK constraint (`settlements_amount_positive`, added in the
+/// `wallet_ledger_invariants` migration) guarantees a settlement always
+/// removes a positive amount — it can never be used to inflate a wallet.
 model Settlement {
   id           String   @id @default(cuid())
   walletId     String   @map("wallet_id")

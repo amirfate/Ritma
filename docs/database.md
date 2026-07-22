@@ -52,6 +52,25 @@ modules that implement those flows, not by the schema.
   `wallets` entity and a `GET /wallet` endpoint, but also says "no user
   wallet." Read together with the donation and settlement rules, `wallets`
   is the artist's earnings ledger; there is no listener-facing wallet.
+  `users` has no wallet relation at all — only `artists` does, via a
+  unique `artist_id` foreign key.
+- **Wallets act only as an earnings ledger — no top-up, no automatic
+  withdrawal.** The only two things that can change a wallet's balance are
+  a `Purchase`'s artist share or a `Donation` (both increases, both tied to
+  a real, independently-auditable commerce event with a payment reference)
+  and a `Settlement` (a decrease). There is no schema path for injecting
+  arbitrary funds. Two CHECK constraints, added in the
+  `wallet_ledger_invariants` migration since Prisma's schema DSL has no
+  declarative check-constraint attribute in the pinned version, hold this
+  at the database layer regardless of what application code attempts:
+  - `wallets_balance_non_negative` (`balance >= 0`) — a wallet can never be
+    over-settled into negative territory.
+  - `settlements_amount_positive` (`amount > 0`) — a settlement is always a
+    positive reduction; it can never be used to increase a balance.
+
+  `settlements.recorded_by_id` is also required and non-nullable, so every
+  balance-reducing row is attributable to a specific administrator's
+  action — there is no scheduled or automatic settlement path.
 
 ## Local development
 
