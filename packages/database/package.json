@@ -19,7 +19,7 @@
   "scripts": {
     "build": "prisma generate && tsc -p tsconfig.build.json",
     "typecheck": "prisma generate && tsc -p tsconfig.json --noEmit",
-    "lint": "eslint .",
+    "lint": "prisma generate && eslint .",
     "clean": "rm -rf dist .turbo",
     "db:generate": "prisma generate",
     "db:migrate:dev": "prisma migrate dev",
