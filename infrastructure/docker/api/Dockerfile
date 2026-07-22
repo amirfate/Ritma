@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # ---------------------------------------------------------------------------
-# Build stage: install workspace dependencies, build the backend and its
+# Build stage: install workspace dependencies, build the API and its
 # workspace packages, then produce a pruned production deployment.
 # ---------------------------------------------------------------------------
 FROM node:22-alpine AS build
@@ -13,11 +13,11 @@ WORKDIR /repo
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
 COPY packages ./packages
-COPY apps/backend ./apps/backend
+COPY apps/api ./apps/api
 
 RUN pnpm install --frozen-lockfile
-RUN pnpm --filter "@ritma/backend..." run build
-RUN pnpm --filter "@ritma/backend" --prod deploy --legacy /out
+RUN pnpm --filter "@ritma/api..." run build
+RUN pnpm --filter "@ritma/api" --prod deploy --legacy /out
 
 # ---------------------------------------------------------------------------
 # Runtime stage: minimal image with production dependencies only.

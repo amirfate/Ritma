@@ -23,7 +23,7 @@
     "clean": "rm -rf dist .turbo"
   },
   "devDependencies": {
-    "@ritma/configs": "workspace:*",
+    "@ritma/tooling": "workspace:*",
     "@types/node": "^22.0.0",
     "eslint": "^9.30.0",
     "typescript": "^5.8.0",

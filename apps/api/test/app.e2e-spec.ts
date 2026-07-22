@@ -5,7 +5,7 @@ import { type App } from 'supertest/types';
 
 import { AppModule } from '../src/app.module';
 
-describe('Ritma backend (e2e)', () => {
+describe('Ritma API (e2e)', () => {
   let app: INestApplication;
 
   beforeAll(async () => {

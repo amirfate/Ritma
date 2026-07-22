@@ -1,0 +1,16 @@
+// Prisma schema for the Ritma platform.
+//
+// This file intentionally defines only the datasource and generator. The
+// domain model (users, devices, artists, albums, tracks, lyrics, playlists,
+// playlist_tracks, purchases, donations, wallets, settlements, invitations,
+// playback_sessions, audit_logs) is added in a dedicated milestone, not as
+// part of repository scaffolding.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}

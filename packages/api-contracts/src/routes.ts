@@ -1,5 +1,5 @@
 /**
- * Route path segments served by the Ritma backend, without a leading slash,
+ * Route path segments served by the Ritma API, without a leading slash,
  * as expected by Nest's `@Controller()` decorator and client base-URL joins.
  */
 export const API_ROUTES = {

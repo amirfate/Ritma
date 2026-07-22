@@ -1,8 +1,8 @@
 {
-  "name": "@ritma/design-system",
+  "name": "@ritma/config",
   "version": "0.1.0",
   "private": true,
-  "description": "Ritma design tokens — the single source of truth mirrored by the Android Material 3 theme.",
+  "description": "Validated runtime environment configuration shared by Ritma services.",
   "license": "UNLICENSED",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -19,11 +19,17 @@
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint .",
+    "test": "vitest run",
     "clean": "rm -rf dist .turbo"
+  },
+  "dependencies": {
+    "zod": "^3.24.0"
   },
   "devDependencies": {
     "@ritma/tooling": "workspace:*",
+    "@types/node": "^22.0.0",
     "eslint": "^9.30.0",
-    "typescript": "^5.8.0"
+    "typescript": "^5.8.0",
+    "vitest": "^3.2.0"
   }
 }

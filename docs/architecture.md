@@ -2,10 +2,20 @@
 
 ## Overview
 
-Ritma is an Android-only product (MVP) backed by a NestJS API. The codebase
-is a **monorepo** managed with **pnpm workspaces** and **TurboRepo**. The
-backend is a **modular monolith**: one deployable NestJS application composed
-of well-separated feature modules.
+Ritma is an Android-only listener product (MVP) backed by a NestJS API, with
+a separate Artist/Administrator web dashboard. The codebase is a
+**monorepo** managed with **pnpm workspaces** and **TurboRepo**. The API is
+a **modular monolith**: one deployable NestJS application composed of
+well-separated feature modules. Kubernetes, microservices, and OpenSearch
+are explicitly out of scope.
+
+The end-to-end request path is:
+
+```
+Android App → Nginx → NestJS API → PostgreSQL
+                                  → Redis
+                                  → MinIO
+```
 
 ## Repository layout
 
@@ -13,18 +23,29 @@ of well-separated feature modules.
 .
 ├── apps/
 │   ├── android/          # Android app (Kotlin, Jetpack Compose, Material 3)
-│   └── backend/          # NestJS application (modular monolith)
+│   ├── api/               # NestJS application (modular monolith)
+│   └── dashboard/         # Artist/Administrator web dashboard (React, Vite)
 ├── packages/
-│   ├── api-contracts/    # HTTP API contracts shared by backend and clients
+│   ├── api-contracts/    # HTTP API contracts shared by the API and its clients
+│   ├── config/            # Validated runtime environment configuration
+│   ├── database/          # Prisma schema, migrations, generated client
 │   ├── design-system/    # Design tokens (colors, spacing, radius, type scale)
+│   ├── logger/             # Pino logging setup, secret redaction
 │   ├── shared/           # Platform-neutral TypeScript utilities
-│   └── configs/          # Shared ESLint / Prettier / TypeScript presets
-├── docker/               # Dockerfiles (one directory per service)
+│   └── tooling/           # Shared ESLint / Prettier / TypeScript presets
+├── infrastructure/
+│   ├── docker/            # Dockerfiles and Docker Compose
+│   └── nginx/             # Reverse proxy configuration
 ├── docs/                 # Project documentation
 ├── scripts/              # Developer and CI helper scripts
-├── .github/              # CI workflows, Dependabot, code owners
-└── docker-compose.yml    # Local stack: postgres, redis, backend
+└── .github/              # CI workflows, Dependabot, code owners
 ```
+
+Note on `apps/dashboard`'s stack: the specification names a stack for
+Android (Kotlin/Compose) and the API (NestJS/Prisma) but is silent on the
+dashboard. React + Vite + TypeScript was chosen as the simplest option
+compatible with the rest of the workspace (same language, same tooling
+presets); it is an implementation choice, not a locked requirement.
 
 ## Android app
 
@@ -53,31 +74,50 @@ Planned dependencies (Retrofit, Room, DataStore, Media3) are pinned in the
 version catalog but not yet wired into the app; they are added when their
 feature lands.
 
-## Backend
+## API
 
-The backend is a single NestJS application. Each domain lives in its own
-Nest module under `src/<module>/`; modules communicate through explicit
-providers, never by importing another module's internals.
+The API is a single NestJS application. Each domain lives in its own Nest
+module under `src/<module>/`; modules communicate through explicit
+providers, never by importing another module's internals. Logging goes
+through `nestjs-pino` (`@ritma/logger`), not Nest's default logger.
 
 Current modules:
 
 - `health` — liveness endpoint (`GET /health` → `{"status":"ok"}`),
   used by the Docker healthcheck and by orchestrators.
 
-Planned platform services (present in local infrastructure, not yet used by
-the application): PostgreSQL via Prisma, Redis via BullMQ for background
-jobs.
+The domain model (users, devices, artists, albums, tracks, lyrics,
+playlists, playlist_tracks, purchases, donations, wallets, settlements,
+invitations, playback_sessions, audit_logs) and the auth/catalog/
+streaming/commerce/invitation modules that implement the product are added
+by dedicated milestones, not part of repository scaffolding.
+
+## Dashboard
+
+`apps/dashboard` is the Artist and Administrator web surface (upload,
+publish, metadata, pricing, reports, artist statistics/revenue). It is
+presently a placeholder shell; screens are added by the milestone that
+implements the admin/artist surface. It consumes the same HTTP contracts
+as any other API client (`@ritma/api-contracts`).
 
 ## Shared packages
 
 - **`@ritma/api-contracts`** — the single source of truth for HTTP routes
-  and request/response types. The backend implements these contracts; the
-  Android client mirrors them (Kotlin DTOs are kept in sync by code review
-  until contract codegen is introduced).
+  and request/response types. The API implements these contracts; the
+  Android and dashboard clients mirror them.
+- **`@ritma/config`** — Zod-validated runtime environment configuration
+  (currently: infrastructure connection variables for Postgres, Redis, and
+  MinIO). Service-specific secrets are added by the milestone that
+  introduces the code consuming them.
+- **`@ritma/database`** — the Prisma schema, migrations, and generated
+  client. The schema currently defines only the datasource/generator; the
+  domain model is a dedicated milestone.
 - **`@ritma/design-system`** — design tokens consumed by tooling and
   mirrored by the Android theme (`ui/theme/Color.kt`, `Type.kt`).
+- **`@ritma/logger`** — a `pino`/`nestjs-pino` setup with redaction rules
+  enforcing "never log OTP codes, JWT secrets, or payment secrets."
 - **`@ritma/shared`** — small, platform-neutral utilities.
-- **`@ritma/configs`** — ESLint, Prettier, and TypeScript presets consumed
+- **`@ritma/tooling`** — ESLint, Prettier, and TypeScript presets consumed
   by every TypeScript package.
 
 Dependency rule: `apps/*` may depend on `packages/*`; packages may depend on
@@ -103,5 +143,7 @@ changes.
   (install → format → lint → typecheck → build → test) and the Android app
   (`./gradlew build`, which assembles both variants and runs Android Lint and
   unit tests).
-- **Docker Compose** provides the local stack: `postgres`, `redis`, and the
-  containerized `backend` built from `docker/backend/Dockerfile`.
+- **Docker Compose** (`infrastructure/docker/docker-compose.yml`) provides
+  the local stack: `postgres`, `redis`, `minio`, the containerized `api`
+  (built from `infrastructure/docker/api/Dockerfile`), and `nginx` as the
+  reverse proxy in front of it.

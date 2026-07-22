@@ -2,13 +2,13 @@
 
 ## Prerequisites
 
-| Tool           | Version         | Notes                                |
-| -------------- | --------------- | ------------------------------------ |
-| Node.js        | 22.x            | See `.nvmrc`; `nvm use` picks it up  |
-| pnpm           | 10.x            | `corepack enable` installs it        |
-| JDK            | 21              | Required for the Android build       |
-| Android Studio | latest stable   | Recommended for Android development  |
-| Docker         | with Compose v2 | For the local postgres/redis/backend |
+| Tool           | Version         | Notes                                        |
+| -------------- | --------------- | -------------------------------------------- |
+| Node.js        | 22.x            | See `.nvmrc`; `nvm use` picks it up          |
+| pnpm           | 10.x            | `corepack enable` installs it                |
+| JDK            | 21              | Required for the Android build               |
+| Android Studio | latest stable   | Recommended for Android development          |
+| Docker         | with Compose v2 | For the local postgres/redis/minio/api stack |
 
 ## Setup
 
@@ -34,17 +34,23 @@ pnpm format       # Prettier check (format:fix to write)
 ./scripts/verify.sh   # everything CI runs, in order
 ```
 
-## Backend
+## API
 
 ```bash
-pnpm dev:backend                     # watch mode on http://localhost:3000
+pnpm dev:api                         # watch mode on http://localhost:3000
 curl http://localhost:3000/health    # -> {"status":"ok"}
 ```
 
 End-to-end tests:
 
 ```bash
-pnpm --filter @ritma/backend test:e2e
+pnpm --filter @ritma/api test:e2e
+```
+
+## Dashboard
+
+```bash
+pnpm --filter @ritma/dashboard dev   # dev server on http://localhost:5173
 ```
 
 ## Android
@@ -64,12 +70,15 @@ The Android SDK location is resolved from `ANDROID_HOME` or
 ## Docker
 
 ```bash
-docker compose up -d                 # postgres + redis + backend
-curl http://localhost:3000/health    # -> {"status":"ok"}
-docker compose down                  # stop (add -v to drop volumes)
+docker compose -f infrastructure/docker/docker-compose.yml up -d
+                                      # postgres + redis + minio + api + nginx
+curl http://localhost/health         # -> {"status":"ok"}  (via nginx, port 80)
+curl http://localhost:3000/health    # -> {"status":"ok"}  (direct to the API)
+docker compose -f infrastructure/docker/docker-compose.yml down
+                                      # stop (add -v to drop volumes)
 ```
 
-To run only the infrastructure while developing the backend on the host:
+To run only the infrastructure while developing the API on the host:
 
 ```bash
 ./scripts/dev-infra.sh
@@ -83,11 +92,11 @@ and are enforced by commitlint via a git hook:
 ```
 <type>(<scope>): <subject>
 
-feat(backend): add health endpoint
+feat(api): add health endpoint
 fix(android): correct dark theme surface color
 chore(repo): bump turbo to 2.6
 ```
 
-Allowed scopes: `android`, `backend`, `shared`, `api-contracts`,
-`design-system`, `configs`, `docker`, `ci`, `docs`, `scripts`, `repo`,
-`deps`.
+Allowed scopes: `android`, `api`, `dashboard`, `shared`, `api-contracts`,
+`design-system`, `tooling`, `config`, `logger`, `database`, `infra`, `ci`,
+`docs`, `scripts`, `repo`, `deps`.

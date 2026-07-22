@@ -1,8 +1,8 @@
 {
-  "name": "@ritma/backend",
+  "name": "@ritma/api",
   "version": "0.1.0",
   "private": true,
-  "description": "Ritma backend — NestJS modular monolith.",
+  "description": "Ritma API — NestJS modular monolith.",
   "license": "UNLICENSED",
   "scripts": {
     "build": "nest build",
@@ -23,7 +23,9 @@
     "@nestjs/core": "^11.1.0",
     "@nestjs/platform-express": "^11.1.0",
     "@ritma/api-contracts": "workspace:*",
+    "@ritma/logger": "workspace:*",
     "@ritma/shared": "workspace:*",
+    "nestjs-pino": "^4.4.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.0"
   },
@@ -31,7 +33,7 @@
     "@nestjs/cli": "^11.0.0",
     "@nestjs/schematics": "^11.0.0",
     "@nestjs/testing": "^11.1.0",
-    "@ritma/configs": "workspace:*",
+    "@ritma/tooling": "workspace:*",
     "@types/express": "^5.0.0",
     "@types/jest": "^29.5.0",
     "@types/node": "^22.0.0",
