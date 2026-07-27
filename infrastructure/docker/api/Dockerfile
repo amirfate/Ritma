@@ -19,6 +19,16 @@ RUN pnpm install --frozen-lockfile
 RUN pnpm --filter "@ritma/api..." run build
 RUN pnpm --filter "@ritma/api" --prod deploy --legacy /out
 
+# `pnpm deploy` re-resolves /out's node_modules independently from the
+# workspace root, so the Prisma client generated during the build above
+# (which lives under the workspace's own node_modules) is not carried
+# over. Regenerate it in place using the `prisma` CLI, which is kept as a
+# runtime dependency of @ritma/database specifically so it survives the
+# `--prod` prune and is available here.
+RUN cd /out && \
+    "$(readlink -f node_modules/@ritma/database/node_modules/.bin/prisma)" \
+      generate --schema=node_modules/@ritma/database/prisma/schema.prisma
+
 # ---------------------------------------------------------------------------
 # Runtime stage: minimal image with production dependencies only.
 # ---------------------------------------------------------------------------

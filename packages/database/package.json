@@ -26,13 +26,13 @@
     "db:migrate:deploy": "prisma migrate deploy"
   },
   "dependencies": {
-    "@prisma/client": "^6.2.0"
+    "@prisma/client": "^6.2.0",
+    "prisma": "^6.2.0"
   },
   "devDependencies": {
     "@ritma/tooling": "workspace:*",
     "@types/node": "^22.0.0",
     "eslint": "^9.30.0",
-    "prisma": "^6.2.0",
     "typescript": "^5.8.0"
   }
 }

@@ -53,7 +53,8 @@ docker compose -f infrastructure/docker/docker-compose.yml up -d
 ## Quality gates
 
 CI runs on every pull request: Prettier, ESLint, TypeScript type checks,
-workspace build, and unit tests for the Node side; `./gradlew build`
+workspace build, unit tests, and end-to-end tests (against ephemeral
+Postgres and Redis service containers) for the Node side; `./gradlew build`
 (assemble, Android Lint, unit tests) for the Android app. Locally,
 `./scripts/verify.sh` runs the same Node checks, and Husky hooks enforce
 formatting and Conventional Commits on every commit.

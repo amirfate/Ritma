@@ -17,6 +17,47 @@ jobs:
   node:
     name: Node — install, lint, typecheck, build, test
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: ritma
+          POSTGRES_PASSWORD: ritma
+          POSTGRES_DB: ritma
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ritma -d ritma"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:8-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      # Test-only fixture values — not real secrets. Auth and streaming
+      # tests need a live Postgres/Redis; the JWT/SMS/MinIO values only
+      # need to satisfy the env schema's shape (mirrors apps/api/.env.test).
+      DATABASE_URL: postgresql://ritma:ritma@localhost:5432/ritma
+      REDIS_URL: redis://localhost:6379
+      MINIO_ENDPOINT: localhost
+      MINIO_PORT: '9000'
+      MINIO_ACCESS_KEY: ritma
+      MINIO_SECRET_KEY: ritma-minio
+      MINIO_BUCKET: ritma-tracks-test
+      MINIO_USE_SSL: 'false'
+      JWT_ACCESS_SECRET: test-access-secret-not-for-production-use-000000
+      JWT_ACCESS_TTL: 15m
+      JWT_REFRESH_SECRET: test-refresh-secret-not-for-production-use-00000
+      JWT_REFRESH_TTL: 30d
+      SMS_IR_API_KEY: test-sms-ir-api-key
+      SMS_IR_TEMPLATE_ID: test-sms-ir-template-id
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -45,8 +86,14 @@ jobs:
       - name: Build
         run: pnpm run build
 
+      - name: Apply database migrations
+        run: pnpm --filter @ritma/database db:migrate:deploy
+
       - name: Test
         run: pnpm run test
+
+      - name: Test (e2e)
+        run: pnpm --filter @ritma/api test:e2e
 
   android:
     name: Android — lint, test, build

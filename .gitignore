@@ -21,6 +21,9 @@ coverage/
 npm-debug.log*
 pnpm-debug.log*
 
+# Local Redis persistence dumps
+*.rdb
+
 # Editors and OS
 .idea/
 .vscode/

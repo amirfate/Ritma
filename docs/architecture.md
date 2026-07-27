@@ -83,10 +83,29 @@ Current modules:
 
 - `health` — liveness endpoint (`GET /health` → `{"status":"ok"}`),
   used by the Docker healthcheck and by orchestrators.
+- `auth` — OTP-based login (sms.ir), JWT access/refresh tokens, and device
+  session management:
+  - `POST /auth/send-code` — sends a 5-digit OTP; 60s resend cooldown.
+  - `POST /auth/verify` — verifies the OTP, provisions the user on first
+    login, registers the device (fingerprint + platform), and issues an
+    access/refresh token pair. Verification is capped at 5 attempts per
+    code, after which the phone number is blocked for 30 minutes.
+  - `POST /auth/refresh` — rotates a refresh token for a fresh
+    access/refresh pair; the presented token is invalidated.
+  - `POST /auth/logout` — revokes the caller's device and its refresh
+    token (requires a bearer access token).
+  - `GET /auth/me` — returns the authenticated user (requires a bearer
+    access token).
+  - A user may have at most 2 active devices; activating a third revokes
+    the least-recently-seen one. Every login, logout, and device
+    change/revocation is recorded in `audit_logs` via the API's
+    application-wide `audit` module (see [docs/database.md](database.md)).
+  - OTP state (code, cooldown, attempt count, block) lives in Redis, never
+    in Postgres — it is ephemeral session state, not a domain entity.
 
 The domain model is defined in `@ritma/database` (see
-[docs/database.md](database.md)); the auth/catalog/streaming/commerce/
-invitation modules that implement the product on top of it are added by
+[docs/database.md](database.md)); the catalog/streaming/commerce/
+invitation modules that implement the rest of the product are added by
 dedicated milestones.
 
 ## Dashboard
@@ -102,9 +121,10 @@ as any other API client (`@ritma/api-contracts`).
 - **`@ritma/api-contracts`** — the single source of truth for HTTP routes
   and request/response types. The API implements these contracts; the
   Android and dashboard clients mirror them.
-- **`@ritma/config`** — Zod-validated runtime environment configuration
-  (currently: infrastructure connection variables for Postgres, Redis, and
-  MinIO). Service-specific secrets are added by the milestone that
+- **`@ritma/config`** — Zod-validated runtime environment configuration:
+  infrastructure connection variables for Postgres, Redis, and MinIO, plus
+  the JWT access/refresh secrets and sms.ir credentials the `auth` module
+  requires. Service-specific secrets are added by the milestone that
   introduces the code consuming them.
 - **`@ritma/database`** — the Prisma schema, migrations, and generated
   client for the full domain model (see [docs/database.md](database.md)).
@@ -136,9 +156,10 @@ changes.
 - **TurboRepo** orchestrates `build`, `lint`, `typecheck`, and `test`
   across the workspace with caching and correct topological ordering.
 - **GitHub Actions** runs two jobs on every pull request: the Node workspace
-  (install → format → lint → typecheck → build → test) and the Android app
-  (`./gradlew build`, which assembles both variants and runs Android Lint and
-  unit tests).
+  (install → format → lint → typecheck → build → unit tests → migrate →
+  e2e tests, with ephemeral Postgres and Redis service containers) and the
+  Android app (`./gradlew build`, which assembles both variants and runs
+  Android Lint and unit tests).
 - **Docker Compose** (`infrastructure/docker/docker-compose.yml`) provides
   the local stack: `postgres`, `redis`, `minio`, the containerized `api`
   (built from `infrastructure/docker/api/Dockerfile`), and `nginx` as the
