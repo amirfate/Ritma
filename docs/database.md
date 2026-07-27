@@ -34,7 +34,7 @@ modules that implement those flows, not by the schema.
 - `TrackStatus`: `DRAFT` → `PENDING_REVIEW` → `PUBLISHED` → `ARCHIVED` (archive is the only terminal state; physical deletion is forbidden)
 - `Genre`: `POP`, `TRADITIONAL`, `ROCK`, `RAP`, `ELECTRONIC`, `CLASSICAL`, `FUSION`
 - `InvitationStatus`: `PENDING`, `ACCEPTED`, `WAITLISTED`
-- `AuditEventType`: `LOGIN`, `LOGOUT`, `DEVICE_CHANGE`, `PURCHASE`, `DONATION`, `PUBLISHING`, `SETTLEMENT`, `ADMIN_ACTION`
+- `AuditEventType`: `LOGIN`, `LOGOUT`, `DEVICE_CHANGE`, `PURCHASE`, `DONATION`, `PUBLISH`, `SETTLEMENT`, `ADMIN_ACTION`
 
 ## Notable design decisions
 
