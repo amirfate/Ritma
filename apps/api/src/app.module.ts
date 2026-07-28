@@ -10,6 +10,7 @@ import { AuditModule } from './audit/audit.module';
 import { AuthModule } from './auth/auth.module';
 import { CatalogModule } from './catalog/catalog.module';
 import { HealthModule } from './health/health.module';
+import { PlaybackModule } from './playback/playback.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { RedisModule } from './redis/redis.module';
 
@@ -31,6 +32,7 @@ import { RedisModule } from './redis/redis.module';
     HealthModule,
     AuthModule,
     CatalogModule,
+    PlaybackModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

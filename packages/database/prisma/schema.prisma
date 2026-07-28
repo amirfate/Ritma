@@ -99,6 +99,22 @@ enum AuditEventType {
   @@map("audit_event_type")
 }
 
+/// The authorization basis under which a PlaybackSession was created —
+/// fixed at creation time and never recomputed afterward, since Track.type
+/// and Purchase are both mutable and cannot reliably reconstruct what was
+/// true at the moment playback started (Milestone 5).
+enum PlaybackAccessType {
+  /// A PAID track streamed with no matching Purchase — clamped to a
+  /// 30-second preview.
+  PREVIEW
+  /// A FREE track — full stream, no purchase required.
+  FULL_FREE
+  /// A PAID track with a matching Purchase — full stream.
+  FULL_PURCHASED
+
+  @@map("playback_access_type")
+}
+
 // ---------------------------------------------------------------------------
 // Identity and devices
 // ---------------------------------------------------------------------------
@@ -410,8 +426,11 @@ model Invitation {
 // ---------------------------------------------------------------------------
 
 /// One row per stream. The "max one simultaneous stream per listener" rule
-/// is enforced by the streaming module (an open session with endedAt null
-/// blocks a new one), not by this schema.
+/// is enforced by the streaming module (an open session with endedAt null,
+/// started within the bounded session TTL, blocks a new one), not by this
+/// schema. There is no lastActivityAt/heartbeat column: Milestone 5 defines
+/// no fast-reclaim SLA, so a stale session is reclaimed lazily once
+/// startedAt falls outside the TTL, with no client keepalive mechanism.
 model PlaybackSession {
   id          String    @id @default(cuid())
   userId      String    @map("user_id")
@@ -420,6 +439,10 @@ model PlaybackSession {
   streamToken String    @unique @map("stream_token")
   startedAt   DateTime  @default(now()) @map("started_at")
   endedAt     DateTime? @map("ended_at")
+
+  /// The authorization basis fixed at session creation — see
+  /// PlaybackAccessType.
+  accessType PlaybackAccessType @map("access_type")
 
   user   User   @relation(fields: [userId], references: [id])
   device Device @relation(fields: [deviceId], references: [id])

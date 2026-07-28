@@ -85,6 +85,8 @@ Current modules:
   used by the Docker healthcheck and by orchestrators.
 - `catalog` — Artist/Album/Track/Lyrics management and the public catalog
   read surface. See Catalog below.
+- `playback` — FLAC streaming and access control. See Streaming & Playback
+  below.
 - `auth` — OTP-based login (sms.ir), JWT access/refresh tokens, and device
   session management:
   - `POST /auth/send-code` — sends a 5-digit OTP; 60s resend cooldown.
@@ -223,8 +225,90 @@ existing generic `ADMIN_ACTION` category already covers this without
 inventing a parallel taxonomy.
 
 The domain model is defined in `@ritma/database` (see
-[docs/database.md](database.md)); the streaming/commerce modules that
-implement the rest of the product are added by dedicated milestones.
+[docs/database.md](database.md)); the commerce module is added by a
+dedicated future milestone.
+
+### Streaming & Playback
+
+Delivers a published track's FLAC audio to an authenticated listener
+(Milestone 5). `PlaybackModule` imports `AuthModule` for `JwtAuthGuard`
+only — one-directional, same pattern as `CatalogModule`. No role
+restriction: streaming is a plain listener capability, not admin/artist-only.
+
+**Endpoints** — every route requires a bearer token; none are public:
+
+- `POST /playback/sessions` — body `{ trackId }`. Creates a session for the
+  caller's current device (the device already embedded in the access token
+  payload since Milestone 2 — no separate device lookup/header). Returns
+  only the session id and the resolved access tier, never a storage
+  reference.
+- `GET /playback/sessions/:id/stream` — the Range-capable audio endpoint.
+- `POST /playback/sessions/:id/end` — explicit end; idempotent.
+
+**Access policy.** Computed once, at session creation, from two facts only
+— a track's `type` and whether a matching `Purchase` row exists — and
+persisted as `PlaybackSession.accessType` (`PlaybackAccessType`, see
+[docs/database.md](database.md)) rather than re-derived later:
+
+| Track.type | Purchase exists | accessType       | Behavior         |
+| ---------- | --------------- | ---------------- | ---------------- |
+| FREE       | n/a             | `FULL_FREE`      | Full stream      |
+| PAID       | no              | `PREVIEW`        | 30s preview only |
+| PAID       | yes             | `FULL_PURCHASED` | Full stream      |
+
+Only `PUBLISHED` tracks are streamable — the same visibility rule already
+enforced for the public catalog, with no separate/looser check introduced.
+`Purchase` rows are only ever read here; Commerce (purchase creation,
+refunds, wallet, settlement) remains out of scope.
+
+**The 30-second preview clamp is enforced exactly, at FLAC frame
+granularity, entirely server-side.** `catalog`-adjacent module
+`playback/flac-boundary.ts` is a pure, framework-independent FLAC
+frame-header scanner (mirroring the `track-lifecycle.ts` pattern): it walks
+frame headers via their sync code, reserved-bit checks, and 8-bit header
+CRC — the same seektable-independent technique the reference FLAC decoder
+uses to seek — to find the exact byte offset of the frame boundary at or
+immediately before the 30-second mark, without decoding any audio and
+without any ffmpeg/libFLAC runtime dependency. Because FLAC frames are
+independently decodable and byte-aligned, truncating at that boundary
+yields a complete, correctly playable prefix; this was independently
+cross-validated by truncating real reference-`flac`-encoded fixtures at the
+computed offset and decoding the result with the reference `flac` decoder,
+confirming the exact predicted sample count. A `PREVIEW` session's clamp is
+recomputed from the persisted `accessType` on every request — a client can
+never obtain more than 30 seconds by requesting a larger `Range`,
+reconnecting, or retrying.
+
+**Storage.** `StorageService` is the minimal abstraction Milestone 5
+requires: it resolves a track's `flacFileUrl` to bytes from MinIO — the
+only storage provider implemented — and is the only thing in the API that
+knows MinIO's endpoint/credentials. No client ever receives a direct or
+signed storage URL; every byte is proxied through the API. `flacFileUrl`
+keeps its exact Milestone 4 contract (a validated URL, unchanged
+validation, no rename, no data migration) — `StorageService` reads the
+URL's path as the MinIO object key internally, which is a resolution
+detail of this one service, not a reinterpretation of what the column
+stores or means.
+
+**Session lifecycle and concurrency.** The existing "one simultaneous
+stream per listener" rule (locked since Milestone 1) is enforced the same
+way M3's invitation capacity/quota checks are: a Postgres advisory lock
+(`pg_advisory_xact_lock(hashtext(userId))`) serializes concurrent
+session-creation attempts for the same user inside one transaction, so two
+simultaneous requests can never both succeed. There is no
+`lastActivityAt`/heartbeat column or endpoint — Milestone 5 sets no
+fast-reclaim SLA, so an abandoned session (crash, dropped connection) is
+reclaimed purely by a bounded TTL against `startedAt`
+(`PLAYBACK_SESSION_MAX_DURATION_MS`, set well above the longest plausible
+continuous listen): once a session is past the TTL it simply stops
+blocking a new one, and is lazily marked `endedAt` as a data-hygiene side
+effect, not because correctness depends on it.
+
+**Audit.** No new `AuditEventType` was added. `PlaybackSession` itself —
+`userId`, `deviceId`, `trackId`, `accessType`, `startedAt`, `endedAt` — is
+already the durable, queryable record of a stream; a session start/stop
+isn't a `LOGIN`/`PURCHASE`/`PUBLISH`-equivalent event worth a duplicate
+`AuditLog` row.
 
 ## Dashboard
 

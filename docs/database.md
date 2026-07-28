@@ -9,23 +9,23 @@ modules that implement those flows, not by the schema.
 
 ## Entities
 
-| Table               | Purpose                                                                                                                                                                                        |
-| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `users`             | Account identity (phone number, role: Listener / Artist / Admin).                                                                                                                              |
-| `devices`           | A user's logged-in devices. Max two active; oldest revoked on a third login.                                                                                                                   |
-| `artists`           | Artist profile, optionally linked to a `users` account, with a per-artist revenue-share override and an admin enable/disable switch.                                                           |
-| `albums`            | Grouping and metadata for tracks, with an admin publish/unpublish switch. No purchase relation — album purchases are disabled in beta.                                                         |
-| `tracks`            | Catalog entries: metadata, FLAC file reference, price, lifecycle status.                                                                                                                       |
-| `lyrics`            | One row per track: standard lyrics (required once written) plus optional synced (timed) lyrics.                                                                                                |
-| `playlists`         | A user's playlists.                                                                                                                                                                            |
-| `playlist_tracks`   | Ordered join table between playlists and tracks.                                                                                                                                               |
-| `purchases`         | Permanent per-track streaming rights. Unique per (user, track) — no re-purchasing, no album purchases, no download rights.                                                                     |
-| `donations`         | 100% of the amount goes to the artist. No campaigns, no listener wallet.                                                                                                                       |
-| `wallets`           | The **artist's** earnings ledger (accumulated purchase share + donations awaiting settlement). Not a listener/user wallet — the spec explicitly forbids one; this is what `GET /wallet` reads. |
-| `settlements`       | A manual payout recorded by an administrator against a wallet. No automated payout processor.                                                                                                  |
-| `invitations`       | Invite-only beta: one row per invite, tracking inviter, redemption, and waitlist status. The global 100-user cap and 10-invites-per-inviter limit are enforced by the invitation module.       |
-| `playback_sessions` | One row per stream. The "one simultaneous stream per listener" rule is enforced by the streaming module (an open session blocks a new one).                                                    |
-| `audit_logs`        | Append-only. Covers login, logout, device change, purchase, donation, publish, settlement, admin action, plus the three invitation events (created/accepted/rejected).                         |
+| Table               | Purpose                                                                                                                                                                                                              |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `users`             | Account identity (phone number, role: Listener / Artist / Admin).                                                                                                                                                    |
+| `devices`           | A user's logged-in devices. Max two active; oldest revoked on a third login.                                                                                                                                         |
+| `artists`           | Artist profile, optionally linked to a `users` account, with a per-artist revenue-share override and an admin enable/disable switch.                                                                                 |
+| `albums`            | Grouping and metadata for tracks, with an admin publish/unpublish switch. No purchase relation — album purchases are disabled in beta.                                                                               |
+| `tracks`            | Catalog entries: metadata, FLAC file reference, price, lifecycle status.                                                                                                                                             |
+| `lyrics`            | One row per track: standard lyrics (required once written) plus optional synced (timed) lyrics.                                                                                                                      |
+| `playlists`         | A user's playlists.                                                                                                                                                                                                  |
+| `playlist_tracks`   | Ordered join table between playlists and tracks.                                                                                                                                                                     |
+| `purchases`         | Permanent per-track streaming rights. Unique per (user, track) — no re-purchasing, no album purchases, no download rights.                                                                                           |
+| `donations`         | 100% of the amount goes to the artist. No campaigns, no listener wallet.                                                                                                                                             |
+| `wallets`           | The **artist's** earnings ledger (accumulated purchase share + donations awaiting settlement). Not a listener/user wallet — the spec explicitly forbids one; this is what `GET /wallet` reads.                       |
+| `settlements`       | A manual payout recorded by an administrator against a wallet. No automated payout processor.                                                                                                                        |
+| `invitations`       | Invite-only beta: one row per invite, tracking inviter, redemption, and waitlist status. The global 100-user cap and 10-invites-per-inviter limit are enforced by the invitation module.                             |
+| `playback_sessions` | One row per stream, including the access basis (`access_type`) fixed at creation. The "one simultaneous stream per listener" rule is enforced by the streaming module (an open, non-stale session blocks a new one). |
+| `audit_logs`        | Append-only. Covers login, logout, device change, purchase, donation, publish, settlement, admin action, plus the three invitation events (created/accepted/rejected).                                               |
 
 ## Enums
 
@@ -35,6 +35,7 @@ modules that implement those flows, not by the schema.
 - `Genre`: `POP`, `TRADITIONAL`, `ROCK`, `RAP`, `ELECTRONIC`, `CLASSICAL`, `FUSION`
 - `InvitationStatus`: `PENDING`, `ACCEPTED`, `WAITLISTED`
 - `AuditEventType`: `LOGIN`, `LOGOUT`, `DEVICE_CHANGE`, `PURCHASE`, `DONATION`, `PUBLISH`, `SETTLEMENT`, `ADMIN_ACTION`, `INVITATION_CREATED`, `INVITATION_ACCEPTED`, `INVITATION_REJECTED`
+- `PlaybackAccessType`: `PREVIEW`, `FULL_FREE`, `FULL_PURCHASED`
 
 ## Notable design decisions
 
@@ -103,6 +104,22 @@ modules that implement those flows, not by the schema.
   (see [docs/architecture.md](architecture.md#invitations)), not by a
   schema constraint, since they require counting rows across a
   concurrency-safe critical section rather than a static check.
+
+- **`playback_sessions.access_type`** is the one Milestone 5 schema
+  addition. It is a genuine gap, not speculative expansion: no existing
+  field records the authorization basis (free vs. preview vs. purchased)
+  a session was actually created under, and `tracks.type` /
+  `purchases` are both mutable after the fact — an admin can change a
+  track's type, or (in a future milestone) a purchase could be refunded —
+  so neither can reliably reconstruct what was true at the moment a
+  specific stream began. Fixing it at creation and never recomputing it
+  matches the same append-only-fact pattern already used for the track
+  lifecycle audit's `fromStatus`/`toStatus` capture. Deliberately **not**
+  added: a `last_activity_at`/heartbeat column. Milestone 5 sets no
+  fast-reclaim SLA, so an abandoned session is reclaimed purely from a
+  bounded TTL against `started_at` (enforced in application logic, not the
+  schema) — adding a column for a capability nothing requires would be
+  exactly the kind of speculative expansion this schema avoids elsewhere.
 
 ## Local development
 
