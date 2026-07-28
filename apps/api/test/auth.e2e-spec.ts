@@ -1,5 +1,3 @@
-import { randomUUID } from 'node:crypto';
-
 import { type INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
@@ -8,6 +6,7 @@ import { type App } from 'supertest/types';
 import { AppModule } from '../src/app.module';
 import { SMS_PROVIDER, type SmsProvider } from '../src/auth/sms/sms-provider';
 import { PrismaService } from '../src/prisma/prisma.service';
+import { createInvitationCode, randomPhoneNumber, seedRegisteredUser } from './fixtures';
 
 class FakeSmsProvider implements SmsProvider {
   public sentCodes = new Map<string, string>();
@@ -16,10 +15,6 @@ class FakeSmsProvider implements SmsProvider {
     this.sentCodes.set(phoneNumber, code);
     return Promise.resolve();
   }
-}
-
-function randomPhoneNumber(): string {
-  return `+9893${randomUUID().replace(/\D/g, '').slice(0, 8)}`;
 }
 
 interface VerifyPhoneNumberResult {
@@ -33,6 +28,7 @@ async function verifyPhoneNumber(
   smsProvider: FakeSmsProvider,
   phoneNumber: string,
   device: { fingerprint: string; platform: string },
+  invitationCode?: string,
 ): Promise<VerifyPhoneNumberResult> {
   await request(app.getHttpServer() as App)
     .post('/auth/send-code')
@@ -51,10 +47,22 @@ async function verifyPhoneNumber(
       code,
       deviceFingerprint: device.fingerprint,
       devicePlatform: device.platform,
+      ...(invitationCode ? { invitationCode } : {}),
     })
     .expect(200);
 
   return response.body as VerifyPhoneNumberResult;
+}
+
+/**
+ * Every first-time registration requires a valid invitation. Seeds a
+ * registered "inviter" directly (bypassing OTP/invitations — see
+ * `fixtures.ts` for why) and has it create one invitation through the real
+ * API, ready for a new phone number to redeem.
+ */
+async function issueInvitation(app: INestApplication): Promise<string> {
+  const inviter = await seedRegisteredUser(app);
+  return createInvitationCode(app, inviter.accessToken);
 }
 
 /**
@@ -91,6 +99,7 @@ describe('Auth (e2e)', () => {
   it('completes the full send-code -> verify -> me -> refresh -> logout flow', async () => {
     ({ app, smsProvider } = await createTestApp());
     const phoneNumber = randomPhoneNumber();
+    const invitationCode = await issueInvitation(app);
 
     const { accessToken, refreshToken, user } = await verifyPhoneNumber(
       app,
@@ -100,6 +109,7 @@ describe('Auth (e2e)', () => {
         fingerprint: 'e2e-device-1',
         platform: 'android',
       },
+      invitationCode,
     );
 
     expect(user.phoneNumber).toBe(phoneNumber);
@@ -163,15 +173,45 @@ describe('Auth (e2e)', () => {
       .expect(400);
   });
 
+  it('rejects a first-time registration with no invitation code', async () => {
+    ({ app, smsProvider } = await createTestApp());
+    const phoneNumber = randomPhoneNumber();
+
+    await request(app.getHttpServer() as App)
+      .post('/auth/send-code')
+      .send({ phoneNumber })
+      .expect(200);
+    const code = smsProvider.sentCodes.get(phoneNumber);
+
+    await request(app.getHttpServer() as App)
+      .post('/auth/verify')
+      .send({
+        phoneNumber,
+        code,
+        deviceFingerprint: 'e2e-device-no-invite',
+        devicePlatform: 'android',
+      })
+      .expect(400);
+
+    const account = await app.get(PrismaService).user.findUnique({ where: { phoneNumber } });
+    expect(account).toBeNull();
+  });
+
   it('revokes the oldest device when a third device logs in for the same user', async () => {
     ({ app, smsProvider } = await createTestApp());
     const prisma = app.get(PrismaService);
     const phoneNumber = randomPhoneNumber();
+    const invitationCode = await issueInvitation(app);
 
-    const first = await verifyPhoneNumber(app, smsProvider, phoneNumber, {
-      fingerprint: 'e2e-device-a',
-      platform: 'android',
-    });
+    const first = await verifyPhoneNumber(
+      app,
+      smsProvider,
+      phoneNumber,
+      { fingerprint: 'e2e-device-a', platform: 'android' },
+      invitationCode,
+    );
+    // Returning-user logins on the same (now-registered) phone number need
+    // no invitation code.
     await verifyPhoneNumber(app, smsProvider, phoneNumber, {
       fingerprint: 'e2e-device-b',
       platform: 'android',
@@ -189,8 +229,9 @@ describe('Auth (e2e)', () => {
     ).not.toBeNull();
   });
 
-  it('never writes the OTP code or issued tokens to the application log', async () => {
+  it('never writes the OTP code, invitation code, or issued tokens to the application log', async () => {
     ({ app, smsProvider } = await createTestApp());
+    const invitationCode = await issueInvitation(app);
     const logLines: string[] = [];
     const writeSpy = jest.spyOn(process.stdout, 'write').mockImplementation((chunk) => {
       logLines.push(String(chunk));
@@ -218,6 +259,7 @@ describe('Auth (e2e)', () => {
           code: capturedCode,
           deviceFingerprint: 'e2e-device-log-test',
           devicePlatform: 'android',
+          invitationCode,
         })
         .expect(200);
       capturedTokens = verifyResponse.body as { accessToken: string; refreshToken: string };
@@ -231,6 +273,7 @@ describe('Auth (e2e)', () => {
 
     const combinedLog = logLines.join('\n');
     expect(combinedLog).not.toContain(capturedCode);
+    expect(combinedLog).not.toContain(invitationCode);
     expect(combinedLog).not.toContain(capturedTokens.accessToken);
     expect(combinedLog).not.toContain(capturedTokens.refreshToken);
   });

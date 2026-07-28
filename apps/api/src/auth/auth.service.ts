@@ -2,6 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { type User } from '@prisma/client';
 
 import { AuditService } from '../audit/audit.service';
+import { InvitationRequiredError } from '../invitation/invitation.errors';
+import { InvitationService } from '../invitation/invitation.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { DeviceService } from './device.service';
 import { type IssuedTokens, TokenService } from './token.service';
@@ -13,6 +15,8 @@ export interface VerifyInput {
   deviceFingerprint: string;
   devicePlatform: string;
   deviceLabel?: string;
+  /** Required only when `phoneNumber` has no existing account. */
+  invitationCode?: string;
 }
 
 export interface VerifyResult extends IssuedTokens {
@@ -27,6 +31,7 @@ export class AuthService {
     private readonly tokenService: TokenService,
     private readonly prisma: PrismaService,
     private readonly auditService: AuditService,
+    private readonly invitationService: InvitationService,
   ) {}
 
   async sendCode(phoneNumber: string): Promise<{ cooldownSeconds: number }> {
@@ -36,15 +41,25 @@ export class AuthService {
   async verify(input: VerifyInput): Promise<VerifyResult> {
     await this.otpService.verifyCode(input.phoneNumber, input.code);
 
-    // First successful OTP verification for a phone number provisions the
-    // account (role defaults to LISTENER). The invite-only cap and
-    // waitlist are not enforced here — that gate belongs to the
-    // invitation milestone, which does not exist yet.
-    const user = await this.prisma.user.upsert({
-      where: { phoneNumber: input.phoneNumber },
-      create: { phoneNumber: input.phoneNumber },
-      update: {},
-    });
+    let user = await this.prisma.user.findUnique({ where: { phoneNumber: input.phoneNumber } });
+
+    if (!user) {
+      // First successful OTP verification for a phone number with no
+      // existing account is a registration, not a login — the beta is
+      // invite-only, so it requires a valid, unconsumed invitation. The
+      // invitation is validated and consumed atomically with user
+      // creation (see InvitationService.redeemForRegistration) so
+      // concurrent registrations can never double-spend a code or push
+      // the beta population past its cap.
+      if (!input.invitationCode) {
+        throw new InvitationRequiredError();
+      }
+      const { user: registeredUser } = await this.invitationService.redeemForRegistration(
+        input.invitationCode,
+        input.phoneNumber,
+      );
+      user = registeredUser;
+    }
 
     const device = await this.deviceService.identifyDevice({
       userId: user.id,

@@ -3,5 +3,6 @@
   "testEnvironment": "node",
   "rootDir": ".",
   "testRegex": ".e2e-spec.ts$",
-  "moduleFileExtensions": ["js", "json", "ts"]
+  "moduleFileExtensions": ["js", "json", "ts"],
+  "maxWorkers": 1
 }

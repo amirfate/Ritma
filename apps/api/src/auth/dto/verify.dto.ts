@@ -1,4 +1,4 @@
-import { IsIn, IsNotEmpty, IsOptional, IsString, Matches } from 'class-validator';
+import { IsIn, IsNotEmpty, IsOptional, IsString, Matches, MaxLength } from 'class-validator';
 
 const E164_LIKE_PATTERN = /^\+?[1-9]\d{7,14}$/;
 const OTP_CODE_PATTERN = /^\d{5}$/;
@@ -21,4 +21,10 @@ export class VerifyDto {
   @IsOptional()
   @IsString()
   deviceLabel?: string;
+
+  /** Required only when `phoneNumber` has no existing account. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(128)
+  invitationCode?: string;
 }

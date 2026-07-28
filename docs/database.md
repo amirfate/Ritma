@@ -34,7 +34,7 @@ modules that implement those flows, not by the schema.
 - `TrackStatus`: `DRAFT` → `PENDING_REVIEW` → `PUBLISHED` → `ARCHIVED` (archive is the only terminal state; physical deletion is forbidden)
 - `Genre`: `POP`, `TRADITIONAL`, `ROCK`, `RAP`, `ELECTRONIC`, `CLASSICAL`, `FUSION`
 - `InvitationStatus`: `PENDING`, `ACCEPTED`, `WAITLISTED`
-- `AuditEventType`: `LOGIN`, `LOGOUT`, `DEVICE_CHANGE`, `PURCHASE`, `DONATION`, `PUBLISH`, `SETTLEMENT`, `ADMIN_ACTION`
+- `AuditEventType`: `LOGIN`, `LOGOUT`, `DEVICE_CHANGE`, `PURCHASE`, `DONATION`, `PUBLISH`, `SETTLEMENT`, `ADMIN_ACTION`, `INVITATION_CREATED`, `INVITATION_ACCEPTED`, `INVITATION_REJECTED`
 
 ## Notable design decisions
 
@@ -71,6 +71,17 @@ modules that implement those flows, not by the schema.
   `settlements.recorded_by_id` is also required and non-nullable, so every
   balance-reducing row is attributable to a specific administrator's
   action — there is no scheduled or automatic settlement path.
+
+- **`invitations.invitee_phone_number` is nullable and set at two possible
+  points**: at creation, if the inviter already knows who they're inviting,
+  or at redemption time, filled in from the phone number actually used. If
+  it was set at creation, redemption is rejected unless the phone number
+  matches — this stops one invitation code being redeemed by an arbitrary
+  third party who intercepts it. The global 100-user cap and 10-invites-
+  per-inviter limit are enforced transactionally by the invitation module
+  (see [docs/architecture.md](architecture.md#invitations)), not by a
+  schema constraint, since they require counting rows across a
+  concurrency-safe critical section rather than a static check.
 
 ## Local development
 

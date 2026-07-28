@@ -10,6 +10,8 @@ describe('redactionPaths', () => {
     expect(redactionPaths).toContain('*.refreshToken');
     expect(redactionPaths).toContain('*.paymentSecret');
     expect(redactionPaths).toContain('*.cardNumber');
+    expect(redactionPaths).toContain('*.code');
+    expect(redactionPaths).toContain('*.invitationCode');
   });
 });
 

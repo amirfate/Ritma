@@ -15,6 +15,7 @@ export const redactionPaths: string[] = [
   '*.otp',
   '*.otpCode',
   '*.code',
+  '*.invitationCode',
   '*.password',
   '*.token',
   '*.accessToken',

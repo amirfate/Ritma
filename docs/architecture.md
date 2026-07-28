@@ -102,11 +102,62 @@ Current modules:
     application-wide `audit` module (see [docs/database.md](database.md)).
   - OTP state (code, cooldown, attempt count, block) lives in Redis, never
     in Postgres — it is ephemeral session state, not a domain entity.
+  - First-time registration (an OTP verified for a phone number with no
+    existing account) additionally requires a valid invitation code — see
+    Invitations below. A returning user's login never needs one.
+
+### Invitations
+
+The beta is invite-only, capped at 100 total registered users, with a
+maximum of 10 invitations per inviter. `POST /auth/verify` calls into this
+module (via `AuthService`) rather than provisioning a user unconditionally;
+`auth` and `invitation` are separate Nest providers, but `InvitationController`
+is registered on `AuthModule` because its authenticated routes need
+`JwtAuthGuard`/`TokenService`, and the two modules would otherwise import
+each other circularly (see the comment on `InvitationModule`).
+
+- `POST /invitations` — creates an invitation (bearer token required).
+  Optionally bound to a specific invitee phone number.
+- `POST /invitations/validate` — read-only check of whether a code is
+  currently redeemable; does not consume it. Public (no bearer token),
+  since the invitee doesn't have an account yet at this point in the flow.
+- `GET /invitations` — lists the caller's own invitations.
+- Redemption itself has no separate endpoint: it happens inside
+  `POST /auth/verify` when `phoneNumber` has no existing account, taking
+  `invitationCode` as an additional field on that same request.
+
+**Concurrency and integrity.** Both the global 100-user cap and the
+10-invitations-per-inviter quota are enforced with Postgres advisory locks
+(`pg_advisory_xact_lock`) inside a single Prisma transaction, not just an
+application-level check-then-write:
+
+- Redemption takes a single fixed lock key before counting `users` and
+  consuming the invitation, so every concurrent registration attempt —
+  regardless of which invitation code it uses — is fully serialized around
+  the capacity check. Two people redeeming the same code, or many people
+  registering when only one slot remains, can never both succeed.
+- Invitation creation takes a lock keyed by a hash of the inviter's id, so
+  concurrent creations from the _same_ inviter are serialized against their
+  quota, without blocking unrelated inviters from creating invitations at
+  the same time.
+- If the invitation was genuine but the cap was already reached, it is
+  still consumed — moved to `WAITLISTED` rather than left `PENDING` — so it
+  cannot be retried once capacity is gone.
+- A failed registration (wrong OTP, invalid or reused invitation code)
+  never touches the invitation: the invitation is only read-and-mutated in
+  the same transaction as the user being provisioned, once OTP verification
+  has already succeeded.
+
+**Bootstrapping.** Because every registration requires an invitation from
+an existing user, the very first account(s) cannot come through the API —
+an operator must insert one `User` and one `Invitation` row directly (e.g.
+via `psql` or Prisma Studio) to seed the initial inviter(s). This is
+deliberate: no bypass endpoint exists, since the locked specification does
+not call for one.
 
 The domain model is defined in `@ritma/database` (see
-[docs/database.md](database.md)); the catalog/streaming/commerce/
-invitation modules that implement the rest of the product are added by
-dedicated milestones.
+[docs/database.md](database.md)); the catalog/streaming/commerce modules
+that implement the rest of the product are added by dedicated milestones.
 
 ## Dashboard
 

@@ -75,7 +75,10 @@ enum InvitationStatus {
   @@map("invitation_status")
 }
 
-/// The audit event categories required by the spec's security section.
+/// The audit event categories required by the spec's security section,
+/// plus the three invitation-flow events added by the invitation
+/// milestone. The original eight are locked and must never be renamed or
+/// removed.
 enum AuditEventType {
   LOGIN
   LOGOUT
@@ -85,6 +88,9 @@ enum AuditEventType {
   PUBLISH
   SETTLEMENT
   ADMIN_ACTION
+  INVITATION_CREATED
+  INVITATION_ACCEPTED
+  INVITATION_REJECTED
 
   @@map("audit_event_type")
 }
@@ -365,13 +371,18 @@ model Settlement {
 /// invitations per inviter are enforced by the invitation module, not by
 /// this schema.
 model Invitation {
-  id           String           @id @default(cuid())
-  code         String           @unique
-  inviterId    String           @map("inviter_id")
-  status       InvitationStatus @default(PENDING)
-  redeemedById String?          @unique @map("redeemed_by_id")
-  createdAt    DateTime         @default(now()) @map("created_at")
-  redeemedAt   DateTime?        @map("redeemed_at")
+  id        String           @id @default(cuid())
+  code      String           @unique
+  inviterId String           @map("inviter_id")
+  status    InvitationStatus @default(PENDING)
+  /// Set when the inviter targets a specific phone number at creation, or
+  /// filled in from the phone number actually used once someone attempts
+  /// to redeem the code — either way, "the invitee phone number when
+  /// known" per the spec.
+  inviteePhoneNumber String?   @map("invitee_phone_number")
+  redeemedById       String?   @unique @map("redeemed_by_id")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  redeemedAt         DateTime? @map("redeemed_at")
 
   inviter    User  @relation("InvitationInviter", fields: [inviterId], references: [id])
   redeemedBy User? @relation("InvitationRedeemedBy", fields: [redeemedById], references: [id])

@@ -65,6 +65,7 @@
       "**/*.ts",
       "!main.ts"
     ],
-    "coverageDirectory": "../coverage"
+    "coverageDirectory": "../coverage",
+    "maxWorkers": 1
   }
 }
