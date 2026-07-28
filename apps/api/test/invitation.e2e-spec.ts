@@ -3,6 +3,7 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { type App } from 'supertest/types';
 
+import { configureApp } from '../src/app.config';
 import { AppModule } from '../src/app.module';
 import { SMS_PROVIDER, type SmsProvider } from '../src/auth/sms/sms-provider';
 import { PrismaService } from '../src/prisma/prisma.service';
@@ -28,6 +29,7 @@ async function createTestApp(): Promise<{ app: INestApplication; smsProvider: Fa
     .compile();
 
   const app = moduleRef.createNestApplication();
+  configureApp(app);
   await app.init();
 
   return { app, smsProvider };

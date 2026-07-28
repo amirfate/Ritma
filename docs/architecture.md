@@ -83,6 +83,8 @@ Current modules:
 
 - `health` — liveness endpoint (`GET /health` → `{"status":"ok"}`),
   used by the Docker healthcheck and by orchestrators.
+- `catalog` — Artist/Album/Track/Lyrics management and the public catalog
+  read surface. See Catalog below.
 - `auth` — OTP-based login (sms.ir), JWT access/refresh tokens, and device
   session management:
   - `POST /auth/send-code` — sends a 5-digit OTP; 60s resend cooldown.
@@ -155,9 +157,74 @@ via `psql` or Prisma Studio) to seed the initial inviter(s). This is
 deliberate: no bypass endpoint exists, since the locked specification does
 not call for one.
 
+### Catalog
+
+Artist/Album/Track/Lyrics management (Milestone 4). `CatalogModule` imports
+`AuthModule` for `JwtAuthGuard`/`RolesGuard` — one-directional, since
+nothing in `AuthModule` depends on `CatalogModule` back (unlike
+`InvitationModule`, there's no circular-import problem to work around
+here).
+
+**Authorization.** Every mutating endpoint requires a bearer token _and_
+the `ADMIN` role (`@UseGuards(JwtAuthGuard, RolesGuard)` + `@Roles('ADMIN')`).
+`RolesGuard` (`auth/guards/roles.guard.ts`) is a small, reusable,
+catalog-independent addition to the auth module: it reads the role already
+embedded in the access token payload (`request.auth.role`, present since
+Milestone 2) against an `@Roles(...)` decorator's metadata — authentication
+alone (a valid token) is never sufficient for these routes.
+
+**Endpoints** — admin routes are Admin-only; public routes are
+unauthenticated and read-only:
+
+- `POST/GET /admin/artists`, `GET/PATCH /admin/artists/:id`,
+  `POST /admin/artists/:id/enable|disable`
+- `POST/GET /admin/albums`, `GET/PATCH /admin/albums/:id`,
+  `POST /admin/albums/:id/publish|unpublish`
+- `POST/GET /admin/tracks`, `GET/PATCH /admin/tracks/:id`,
+  `POST /admin/tracks/:id/ready|publish|unpublish|archive`
+- `POST/GET/PATCH /admin/tracks/:trackId/lyrics`
+- `GET /artists`, `GET /artists/:id` — active artists only
+- `GET /albums`, `GET /albums/:id` — published albums only
+- `GET /tracks`, `GET /tracks/:id` — published tracks only; the response
+  omits `flacFileUrl` entirely (metadata only — this is not a delivery
+  surface) and `status` (redundant once "published" is the only thing
+  ever returned)
+
+There are deliberately no delete endpoints for any catalog entity — the
+admin operations list never included one; `enable/disable`,
+`publish/unpublish`, and the track lifecycle are the only ways to remove
+something from view, so nothing is ever orphaned.
+
+**Track lifecycle.** `DRAFT → READY → PUBLISHED → UNPUBLISHED → ARCHIVED`,
+enforced by an explicit transition map
+(`catalog/track/track-lifecycle.ts`) — `ARCHIVED` is reachable from every
+other status (the sole terminal one); every other transition follows the
+chain in order with no shortcuts or reverse transitions. Publishing
+(`READY → PUBLISHED`) additionally validates every prerequisite the spec
+requires — the track's artist is active, required metadata is present, an
+`albumId` (if set) resolves to a real album, lyrics exist for the track,
+and a paid track has a positive price — collecting every failing reason at
+once rather than failing on the first, so an admin isn't stuck making one
+fix per rejected request.
+
+**Search/filter/pagination.** List endpoints share one `PageQueryDto`
+(`page`/`pageSize`, offset-based, capped at 100 per page) plus
+per-entity filters — title/name search, artist/album association, genre,
+and (admin-only) lifecycle/publication status — with deterministic
+`createdAt desc, id asc` ordering.
+
+**Audit.** Reuses the existing `AuditService`/`AuditLog`: `PUBLISH` for
+the publish transition (the dedicated type this event already had before
+Milestone 4), `ADMIN_ACTION` for every other catalog mutation (create,
+update, enable/disable, publish/unpublish an album, ready/unpublish/archive
+a track, lyrics create/update), each with `metadata` identifying the
+entity, action, and record id. No new audit event types were added — the
+existing generic `ADMIN_ACTION` category already covers this without
+inventing a parallel taxonomy.
+
 The domain model is defined in `@ritma/database` (see
-[docs/database.md](database.md)); the catalog/streaming/commerce modules
-that implement the rest of the product are added by dedicated milestones.
+[docs/database.md](database.md)); the streaming/commerce modules that
+implement the rest of the product are added by dedicated milestones.
 
 ## Dashboard
 

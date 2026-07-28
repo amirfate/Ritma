@@ -8,6 +8,7 @@ import { LoggerModule } from 'nestjs-pino';
 
 import { AuditModule } from './audit/audit.module';
 import { AuthModule } from './auth/auth.module';
+import { CatalogModule } from './catalog/catalog.module';
 import { HealthModule } from './health/health.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { RedisModule } from './redis/redis.module';
@@ -29,6 +30,7 @@ import { RedisModule } from './redis/redis.module';
     AuditModule,
     HealthModule,
     AuthModule,
+    CatalogModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

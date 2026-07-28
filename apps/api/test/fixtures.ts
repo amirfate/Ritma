@@ -33,6 +33,24 @@ export async function seedRegisteredUser(
   return { userId: user.id, accessToken: tokens.accessToken };
 }
 
+/** Same as `seedRegisteredUser`, but with the ADMIN role — for catalog authorization tests. */
+export async function seedAdminUser(
+  app: INestApplication,
+): Promise<{ userId: string; accessToken: string }> {
+  const prisma = app.get(PrismaService);
+  const tokenService = app.get(TokenService);
+
+  const user = await prisma.user.create({
+    data: { phoneNumber: randomPhoneNumber(), role: 'ADMIN' },
+  });
+  const device = await prisma.device.create({
+    data: { userId: user.id, fingerprint: `seed-admin-${randomUUID()}`, platform: 'android' },
+  });
+  const tokens = await tokenService.issueTokens(user.id, device.id, user.role);
+
+  return { userId: user.id, accessToken: tokens.accessToken };
+}
+
 /** Creates an invitation through the real HTTP API, as any authenticated user would. */
 export async function createInvitationCode(
   app: INestApplication,

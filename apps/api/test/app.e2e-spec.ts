@@ -3,6 +3,7 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { type App } from 'supertest/types';
 
+import { configureApp } from '../src/app.config';
 import { AppModule } from '../src/app.module';
 
 describe('Ritma API (e2e)', () => {
@@ -14,6 +15,7 @@ describe('Ritma API (e2e)', () => {
     }).compile();
 
     app = moduleRef.createNestApplication();
+    configureApp(app);
     await app.init();
   });
 

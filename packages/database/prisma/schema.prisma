@@ -41,12 +41,16 @@ enum TrackType {
   @@map("track_type")
 }
 
-/// Draft -> Pending Review -> Published -> Archived. Archive is the only
-/// terminal state; physical deletion of a track is forbidden by the spec.
+/// Draft -> Ready -> Published -> Unpublished -> Archived. Archive is the
+/// only terminal state; physical deletion of a track is forbidden by the
+/// spec. Unpublished is distinct from Archived: it is a reversible-in-
+/// principle takedown (an admin chose to stop showing a previously
+/// published track), whereas Archived is final.
 enum TrackStatus {
   DRAFT
-  PENDING_REVIEW
+  READY
   PUBLISHED
+  UNPUBLISHED
   ARCHIVED
 
   @@map("track_status")
@@ -163,6 +167,10 @@ model Artist {
   /// Revenue share in basis points (9000 = 90.00%). Defaults to the locked
   /// 90/10 split; an administrator may override per artist.
   revenueShareBps Int      @default(9000) @map("revenue_share_bps")
+  /// Admin enable/disable switch. A disabled artist is hidden from the
+  /// public catalog and cannot have new tracks published (existing
+  /// published tracks are unaffected — disabling doesn't cascade).
+  isActive        Boolean  @default(true) @map("is_active")
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
 
@@ -172,6 +180,7 @@ model Artist {
   donations Donation[]
   wallet    Wallet?
 
+  @@index([isActive])
   @@map("artists")
 }
 
@@ -183,6 +192,9 @@ model Album {
   title         String
   coverImageUrl String    @map("cover_image_url")
   releasedAt    DateTime? @map("released_at")
+  /// Admin-controlled visibility switch, independent of any track's own
+  /// status — the public catalog only lists published albums.
+  isPublished   Boolean   @default(false) @map("is_published")
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
@@ -190,6 +202,7 @@ model Album {
   tracks Track[]
 
   @@index([artistId])
+  @@index([isPublished])
   @@map("albums")
 }
 

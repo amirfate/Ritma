@@ -13,8 +13,8 @@ modules that implement those flows, not by the schema.
 | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `users`             | Account identity (phone number, role: Listener / Artist / Admin).                                                                                                                              |
 | `devices`           | A user's logged-in devices. Max two active; oldest revoked on a third login.                                                                                                                   |
-| `artists`           | Artist profile, optionally linked to a `users` account, with a per-artist revenue-share override.                                                                                              |
-| `albums`            | Grouping and metadata for tracks. No purchase relation — album purchases are disabled in beta.                                                                                                 |
+| `artists`           | Artist profile, optionally linked to a `users` account, with a per-artist revenue-share override and an admin enable/disable switch.                                                           |
+| `albums`            | Grouping and metadata for tracks, with an admin publish/unpublish switch. No purchase relation — album purchases are disabled in beta.                                                         |
 | `tracks`            | Catalog entries: metadata, FLAC file reference, price, lifecycle status.                                                                                                                       |
 | `lyrics`            | One row per track: standard lyrics (required once written) plus optional synced (timed) lyrics.                                                                                                |
 | `playlists`         | A user's playlists.                                                                                                                                                                            |
@@ -25,13 +25,13 @@ modules that implement those flows, not by the schema.
 | `settlements`       | A manual payout recorded by an administrator against a wallet. No automated payout processor.                                                                                                  |
 | `invitations`       | Invite-only beta: one row per invite, tracking inviter, redemption, and waitlist status. The global 100-user cap and 10-invites-per-inviter limit are enforced by the invitation module.       |
 | `playback_sessions` | One row per stream. The "one simultaneous stream per listener" rule is enforced by the streaming module (an open session blocks a new one).                                                    |
-| `audit_logs`        | Append-only. Covers the eight required event categories: login, logout, device change, purchase, donation, publishing, settlement, admin action.                                               |
+| `audit_logs`        | Append-only. Covers login, logout, device change, purchase, donation, publish, settlement, admin action, plus the three invitation events (created/accepted/rejected).                         |
 
 ## Enums
 
 - `UserRole`: `LISTENER`, `ARTIST`, `ADMIN`
 - `TrackType`: `FREE`, `PAID`
-- `TrackStatus`: `DRAFT` → `PENDING_REVIEW` → `PUBLISHED` → `ARCHIVED` (archive is the only terminal state; physical deletion is forbidden)
+- `TrackStatus`: `DRAFT` → `READY` → `PUBLISHED` → `UNPUBLISHED` → `ARCHIVED` (archive is the only terminal state, reachable from every other status; physical deletion is forbidden)
 - `Genre`: `POP`, `TRADITIONAL`, `ROCK`, `RAP`, `ELECTRONIC`, `CLASSICAL`, `FUSION`
 - `InvitationStatus`: `PENDING`, `ACCEPTED`, `WAITLISTED`
 - `AuditEventType`: `LOGIN`, `LOGOUT`, `DEVICE_CHANGE`, `PURCHASE`, `DONATION`, `PUBLISH`, `SETTLEMENT`, `ADMIN_ACTION`, `INVITATION_CREATED`, `INVITATION_ACCEPTED`, `INVITATION_REJECTED`
@@ -72,6 +72,27 @@ modules that implement those flows, not by the schema.
   balance-reducing row is attributable to a specific administrator's
   action — there is no scheduled or automatic settlement path.
 
+- **`artists.is_active` and `albums.is_published`** are the two Milestone 4
+  additions to the catalog schema — both were genuine gaps, not
+  speculative expansion. Neither entity had any field capable of
+  representing "hidden from the public catalog" before: `artists` had no
+  boolean/status field at all, and `albums.released_at` is a release
+  date, not a visibility toggle. `is_active` backs the required admin
+  "enable/disable" operation and the "artist must be active" publish
+  prerequisite; `is_published` backs the required admin "status
+  management" operation and the public "published albums only" read
+  model. `tracks.status` (`TrackStatus`) already covered the equivalent
+  concept for tracks and needed no new column — only the enum values
+  changed (see below).
+- **`TrackStatus` renamed `PENDING_REVIEW` to `READY` and added
+  `UNPUBLISHED`**, in the `catalog_lifecycle_and_status` migration
+  (`ALTER TYPE ... RENAME VALUE` + `ALTER TYPE ... ADD VALUE`, the same
+  pattern as `rename_audit_event_publish`). `UNPUBLISHED` is a genuine
+  gap: the prior 4-state enum had no way to represent "was published,
+  then taken down" as distinct from `ARCHIVED`, which the spec treats as
+  final. The rename aligns the stored value with the locked lifecycle
+  name; nothing consumed the old name yet, so it was a pure rename, not a
+  data migration.
 - **`invitations.invitee_phone_number` is nullable and set at two possible
   points**: at creation, if the inviter already knows who they're inviting,
   or at redemption time, filled in from the phone number actually used. If
