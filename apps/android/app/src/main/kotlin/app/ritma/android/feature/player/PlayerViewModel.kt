@@ -1,12 +1,14 @@
 package app.ritma.android.feature.player
 
 import android.content.Context
+import androidx.annotation.OptIn
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import app.ritma.android.data.playback.CreateSessionOutcome
@@ -101,6 +103,7 @@ constructor(
         }
     }
 
+    @OptIn(UnstableApi::class)
     private fun startPlayback(sessionId: String, accessType: PlaybackAccessType) {
         val exoPlayer =
             ExoPlayer.Builder(context)
