@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
 }
@@ -26,6 +27,13 @@ android {
         debug {
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
+            // 10.0.2.2 is the Android emulator's alias for the host
+            // machine's loopback interface, matching the API's default
+            // local port (apps/api/.env.example: PORT=3000). No real
+            // production API domain exists anywhere in this repository
+            // yet, so the release value below is deliberately left
+            // unconfigured rather than invented.
+            buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:3000/\"")
         }
         release {
             isMinifyEnabled = true
@@ -34,6 +42,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
+            buildConfigField("String", "API_BASE_URL", "\"\"")
         }
     }
 
@@ -44,6 +53,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     packaging {
@@ -78,6 +88,18 @@ dependencies {
     implementation(libs.androidx.hilt.navigation.compose)
 
     implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.kotlinx.serialization.json)
+
+    implementation(libs.retrofit)
+    implementation(libs.retrofit.converter.kotlinx.serialization)
+    implementation(libs.okhttp)
+    implementation(libs.okhttp.logging.interceptor)
+
+    implementation(libs.androidx.datastore.preferences)
+
+    implementation(libs.androidx.media3.exoplayer)
+    implementation(libs.androidx.media3.ui)
+    implementation(libs.androidx.media3.datasource.okhttp)
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)

@@ -47,30 +47,226 @@ the API.
 
 ## Android app
 
-| Concern              | Choice                       |
-| -------------------- | ---------------------------- |
-| Language             | Kotlin                       |
-| UI                   | Jetpack Compose + Material 3 |
-| Architecture         | MVVM (ViewModel + StateFlow) |
-| Dependency injection | Hilt                         |
-| Navigation           | Navigation Compose           |
-| Networking           | Retrofit + OkHttp (planned)  |
-| Local persistence    | Room + DataStore (planned)   |
-| Media playback       | Media3 ExoPlayer (planned)   |
-| Dependency versions  | Gradle Version Catalog       |
+The Android Listener vertical slice (Milestone 6): account creation/login,
+browsing the catalog, and streaming a track, end to end against the API.
 
-Structure inside `apps/android/app`:
+| Concern               | Choice                                                                |
+| --------------------- | --------------------------------------------------------------------- |
+| Language              | Kotlin                                                                |
+| UI                    | Jetpack Compose + Material 3                                          |
+| Architecture          | MVVM (ViewModel + StateFlow)                                          |
+| Dependency injection  | Hilt                                                                  |
+| Navigation            | Navigation Compose                                                    |
+| Networking            | Retrofit + OkHttp (kotlinx.serialization converter)                   |
+| Encrypted persistence | DataStore Preferences + Android Keystore AES-256-GCM                  |
+| Media playback        | Media3 ExoPlayer, streamed through the same OkHttp client as Retrofit |
+| Dependency versions   | Gradle Version Catalog                                                |
 
-- `feature/<name>/` — one package per feature, each with a `Screen`
-  (stateless composable), a `Route` (stateful entry point), and a
-  `ViewModel`.
-- `navigation/` — app-level navigation graph and destinations.
-- `ui/theme/` — Material 3 theme; colors and type scale mirror
-  `packages/design-system`.
+Room is pinned in the version catalog but is not wired into the app —
+nothing in the current listener slice needs local relational storage;
+DataStore (encrypted for tokens, plain for the device fingerprint) is
+sufficient for everything persisted so far.
 
-Planned dependencies (Retrofit, Room, DataStore, Media3) are pinned in the
-version catalog but not yet wired into the app; they are added when their
-feature lands.
+### Package structure (`apps/android/app/src/main/kotlin/app/ritma/android`)
+
+- `data/<domain>/` — one package per domain (`auth`, `catalog`, `playback`),
+  each holding that domain's Retrofit `Api` interface, DTOs mirroring
+  `@ritma/api-contracts` by hand (no codegen — see below), and a
+  `Repository` that turns per-status-code HTTP responses into a typed
+  sealed outcome.
+- `di/` — Hilt modules: `NetworkModule` (Json, OkHttpClient, Retrofit, and
+  the three `Api` instances), `AuthBindingsModule` (`@Binds` interface
+  bindings — `TokenStorage`, `DeviceFingerprintSource`), and
+  `CoroutineScopeModule` (a process-lifetime `@ApplicationScope
+CoroutineScope`, see ExoPlayer lifecycle below).
+- `feature/<name>/` — one package per screen, each with a `Screen`
+  (stateless composable), a `Route` (stateful entry point wiring a
+  `ViewModel`), and a `ViewModel`. `feature/auth/{login,verify}`,
+  `feature/catalog/{artist,album,track}`, `feature/home` (the
+  Home/Catalog destination), `feature/player`.
+- `navigation/` — `RitmaDestination` (the seven routes) and `RitmaNavHost`
+  (the graph wiring them together).
+- `ui/` — `RitmaApp` (root composable, owns the auth gate) and
+  `ui/theme/` (Material 3 theme; colors and type scale mirror
+  `packages/design-system`).
+
+`@ritma/api-contracts` (TypeScript) cannot be imported by Kotlin, so every
+DTO shape in `data/<domain>/*Dtos.kt` is a hand-authored mirror of the
+corresponding `packages/api-contracts/src/*.ts` file and the API response
+it describes — kept in sync manually, with no codegen pipeline.
+
+### Authenticated networking
+
+One `OkHttpClient` singleton (`NetworkModule.provideOkHttpClient`) backs
+every authenticated request the app makes — Retrofit calls and the Media3
+audio stream alike:
+
+- `AuthInterceptor` reads the current access token from `TokenStorage` and
+  attaches `Authorization: Bearer <token>` to every outgoing request.
+- `TokenAuthenticator` (an OkHttp `Authenticator`) reacts to a `401` by
+  refreshing. Refresh is single-flight: a `kotlinx.coroutines.sync.Mutex`
+  serializes concurrent 401s, and before calling `POST /auth/refresh` it
+  checks whether the access token that caused _this_ 401 still matches
+  what's currently stored — if a concurrent caller already refreshed, the
+  new token is reused instead of spending a second network round trip. A
+  `responseCount` guard (walking the response's `priorResponse` chain,
+  capped at 3) prevents an infinite retry loop if refresh itself keeps
+  failing. A refresh that ultimately fails clears `TokenStorage` (the
+  session is treated as invalid) rather than leaving stale tokens behind.
+- Because Media3's `OkHttpDataSource` (`PlaybackDataSourceFactory`, see
+  below) is built from this same client, the audio stream request carries
+  the same bearer token and gets the same automatic 401-refresh-retry as
+  any Retrofit call — there is no second, divergent auth path for
+  streaming.
+
+### Encrypted token persistence
+
+`TokenStore` (implements `TokenStorage`) persists the access/refresh token
+pair in a DataStore `Preferences` file, but never as plaintext:
+`SecureTokenCipher` encrypts each token with AES-256-GCM using a key held
+in the Android Keystore (`AndroidKeyStore` provider) — the key is
+generated once, is not extractable, and the app only ever asks the
+Keystore to encrypt/decrypt with it. No `setUserAuthenticationRequired` is
+set, so a token can be decrypted for a silent background refresh without
+a biometric/lock-screen prompt. Whether the key is hardware-backed is
+recorded via `KeyInfo.isInsideSecureHardware` as an observed runtime
+capability, not asserted as a guarantee. A decrypt/read failure
+(corrupted ciphertext, invalid GCM tag, malformed payload,
+`KeyPermanentlyInvalidatedException`, or any other Keystore error) is
+treated as "no valid session" — `TokenStore` clears itself and returns
+null tokens, rather than crashing or surfacing a raw exception.
+
+The device fingerprint (`DeviceFingerprintProvider`, behind the
+`DeviceFingerprintSource` interface) is a stable per-install UUID
+generated once and reused for the app's lifetime, sent as
+`deviceFingerprint` on `POST /auth/verify`. It is not a credential, so
+unlike the tokens it is stored in plain (unencrypted) DataStore.
+
+### Authentication flow
+
+`send-code → verify → token storage → authenticated API requests → refresh`:
+
+1. **Login** (`feature/auth/login`) collects a phone number and calls
+   `AuthRepository.sendCode`, which wraps `POST /auth/send-code`. The
+   response is mapped to a `SendCodeOutcome` (`Sent`, `RateLimited`,
+   `Failed`) by status code.
+2. **Verify** (`feature/auth/verify`) collects the OTP (and, only for a
+   new account, an invitation code) and calls `AuthRepository.verify`,
+   wrapping `POST /auth/verify`. The response maps to a `VerifyOutcome`:
+   `Success` (tokens issued and saved to `TokenStore`), `Waitlisted` (the
+   API's `202` — a valid OTP and invitation, but the beta was at
+   capacity; kept as its own outcome, never collapsed into a failure),
+   `Rejected` (`400` — invalid code/invitation), or `Failed`.
+3. From then on, every authenticated request (catalog is actually
+   unauthenticated — see below — but auth/playback are not) goes through
+   the shared `OkHttpClient` described above, which attaches the current
+   access token and transparently refreshes on `401`.
+4. **Logout** (`AuthRepository.logout`) calls `POST /auth/logout` and
+   clears `TokenStorage` in a `finally` block — a failed server call
+   never prevents the local session from being cleared.
+
+### Catalog data layer
+
+`data/catalog` (`CatalogApi`, `CatalogRepository`) mirrors the six public,
+unauthenticated catalog endpoints exactly (query parameters omitted from
+the request, not client-defaulted, when unset — letting the API's own
+defaults apply):
+
+- `GET /artists`, `GET /artists/:id`
+- `GET /albums`, `GET /albums/:id`
+- `GET /tracks`, `GET /tracks/:id`
+
+`CatalogRepository` wraps each call in a `CatalogResult<T>` (`Success` /
+`Failed`) — there is no separate `Loading`/`Empty` variant; a suspended
+call is the caller's loading state, and an empty successful result is
+`Success` with an empty list. `PublicAlbum.artistId` and
+`PublicTrack.artistId`/`albumId` are bare foreign keys, mirroring the API
+exactly — the Android layer never assumes a nested artist/album object,
+so screens that need a related entity's details (e.g. an album's artist
+name) make a second, explicit repository call.
+
+### Playback data layer and session lifecycle
+
+`data/playback` (`PlaybackApi`, `PlaybackRepository`) models playback
+session lifecycle only — `POST /playback/sessions` and
+`POST /playback/sessions/:id/end` — not the binary stream endpoint, which
+Media3 reads directly (see below).
+
+- `PlaybackRepository.createSession(trackId)` wraps `POST
+/playback/sessions` and maps the response to `CreateSessionOutcome`:
+  `Success` (session id + server-decided `accessType`),
+  `DeviceNotAuthorized` (`403`), `TrackUnavailable` (`404`),
+  `ConcurrentSessionExists` (`409`), or `Failed`.
+- `accessType` (`PREVIEW` / `FULL_FREE` / `FULL_PURCHASED`) always comes
+  from the server response — the client has no code path that computes,
+  overrides, or locally enforces it. For a `PREVIEW` session the Android
+  app does not impose its own duration limit; the 30-second boundary is
+  entirely server-enforced (a `416` at that boundary is a normal,
+  expected outcome — see below), matching the API-side design in
+  Streaming & Playback above.
+- `PlaybackRepository.endSession(sessionId)` is best-effort: it wraps
+  `POST /playback/sessions/:id/end` in a try/catch and never rethrows,
+  since ending playback locally must never be blocked by a failed network
+  call.
+- `PlaybackRepository.streamUrl(sessionId)` builds the URL to
+  `GET /playback/sessions/:id/stream`; no token is appended to it, since
+  the shared `AuthInterceptor` attaches `Authorization` the same way it
+  does for every other request on the shared client.
+
+### Player (ExoPlayer) lifecycle
+
+`PlayerViewModel` (`feature/player`) owns the `ExoPlayer` instance
+directly:
+
+1. On creation, it first calls `PlaybackRepository.createSession` — a
+   session always exists before any stream request is made.
+2. On success, it builds an `ExoPlayer` whose `MediaSourceFactory` is
+   backed by `PlaybackDataSourceFactory` — an `OkHttpDataSource.Factory`
+   wrapping the one shared `OkHttpClient` (see Authenticated networking
+   above), so the stream request is authenticated and refresh-retried the
+   same way as any other call. Range requests for seeking are never
+   constructed by application code; they are standard `OkHttpDataSource`/
+   ExoPlayer behavior.
+3. A `Player.Listener` maps player errors through
+   `PlaybackErrorClassifier`, which distinguishes `416` (`PreviewEnded` —
+   the expected PREVIEW-boundary outcome, not a crash), `404`
+   (`SessionExpired`), `401` (`AuthenticationRequired` — reaching this
+   state means `TokenAuthenticator`'s own refresh already failed), and an
+   `Unknown` fallback.
+4. **Ending a session exactly once.** `endSessionOnce()` is guarded by an
+   `AtomicBoolean`, since natural playback completion
+   (`Player.STATE_ENDED`), a player error, and the ViewModel being torn
+   down can all independently try to end the same session. The actual
+   `endSession` network call runs on a process-lifetime
+   `@ApplicationScope CoroutineScope` (from `CoroutineScopeModule`), not
+   `viewModelScope` — by the time `ViewModel.onCleared()` runs,
+   `viewModelScope` is already cancelled and cannot launch new work, but
+   the session still needs to be closed out.
+5. There is no MediaSession, foreground service, or background-playback
+   support — playback exists only while the Player screen and its
+   `ViewModel` are alive, matching the current M6 listener-slice scope.
+
+### Navigation
+
+Seven destinations (`RitmaDestination`): **Login → Verify → Home (the
+Home/Catalog destination) → {Artist, Album, Track} Detail → Player.**
+Verify receives the phone number as a navigation argument from Login. A
+successful verification navigates to Home and clears Login/Verify from
+the back stack (`popUpTo(Login) { inclusive = true }`). From Home a user
+reaches any Artist/Album/Track detail screen; those three detail screens
+also link to each other by the FK relationships described above (an
+album links to its artist, a track links to its artist and, if set, its
+album). A Track detail screen's Play action navigates to Player with the
+track id.
+
+### Application-level auth gate
+
+`RitmaApp` (the root composable) does not mount the navigation graph
+immediately. `AppViewModel` resolves, once, whether a session already
+exists (`AuthRepository.isAuthenticated()` — whether `TokenStorage`
+currently holds a token pair) and only then picks the nav graph's
+`startDestination`: `Home` if a session exists, `Login` otherwise. A short
+loading state is shown while this resolves.
 
 ## API
 
