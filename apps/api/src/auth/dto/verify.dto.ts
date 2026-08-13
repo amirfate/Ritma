@@ -14,8 +14,8 @@ export class VerifyDto {
   @IsNotEmpty()
   deviceFingerprint!: string;
 
-  /** The only platform in scope for the beta. */
-  @IsIn(['android'])
+  /** Android app and the Dashboard's browser-based BFF login are both in scope. */
+  @IsIn(['android', 'web'])
   devicePlatform!: string;
 
   @IsOptional()

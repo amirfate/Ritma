@@ -14,11 +14,17 @@ export const API_ROUTES = {
   artists: 'artists',
   artistById: 'artists/:id',
 
+  adminArtists: 'admin/artists',
+
   albums: 'albums',
   albumById: 'albums/:id',
 
+  adminAlbums: 'admin/albums',
+
   tracks: 'tracks',
   trackById: 'tracks/:id',
+
+  adminTracks: 'admin/tracks',
 
   playbackSessions: 'playback/sessions',
   playbackSessionStream: 'playback/sessions/:id/stream',

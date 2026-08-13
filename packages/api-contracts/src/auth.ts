@@ -20,14 +20,14 @@ export interface SendCodeResponse {
 /**
  * Request body of `POST /auth/verify`. `invitationCode` is required only
  * when `phoneNumber` has no existing account (first-time registration) —
- * a returning user's login never needs one. `devicePlatform` is fixed to
- * `'android'`, the only platform in scope for the beta.
+ * a returning user's login never needs one. `devicePlatform` is `'android'`
+ * for the native app or `'web'` for the Dashboard's browser-based login.
  */
 export interface VerifyRequest {
   phoneNumber: string;
   code: string;
   deviceFingerprint: string;
-  devicePlatform: 'android';
+  devicePlatform: 'android' | 'web';
   deviceLabel?: string;
   invitationCode?: string;
 }
