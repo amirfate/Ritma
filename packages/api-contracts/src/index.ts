@@ -22,6 +22,7 @@ export type {
   PublicAlbum,
   PublicTrackQuery,
   PublicTrack,
+  PublicLyrics,
 } from './catalog';
 export type {
   AdminArtistQuery,

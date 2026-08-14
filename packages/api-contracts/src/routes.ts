@@ -23,6 +23,7 @@ export const API_ROUTES = {
 
   tracks: 'tracks',
   trackById: 'tracks/:id',
+  trackLyrics: 'tracks/:id/lyrics',
 
   adminTracks: 'admin/tracks',
 

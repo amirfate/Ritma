@@ -95,3 +95,17 @@ export interface PublicTrack {
   credits: string | null;
   story: string | null;
 }
+
+/**
+ * Response shape of `GET /tracks/:id/lyrics`. Published tracks with lyrics
+ * only — 404 otherwise, never distinguishing "track not published" from
+ * "no lyrics yet" to an unauthenticated caller. Deliberately excludes the
+ * Lyrics row's own `id`/`createdAt`/`updatedAt` — admin/audit metadata a
+ * listener has no use for, matching how `PublicTrack` already excludes the
+ * equivalent fields on `AdminTrack`.
+ */
+export interface PublicLyrics {
+  trackId: string;
+  content: string;
+  syncedContent: string | null;
+}

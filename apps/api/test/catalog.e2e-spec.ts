@@ -440,4 +440,87 @@ describe('Catalog (e2e)', () => {
       .expect(200);
     expect((publishedOnly.body as { items: unknown[] }).items).toHaveLength(0);
   });
+
+  it('serves public lyrics only for a published track that has them, and 404s otherwise', async () => {
+    app = await createTestApp();
+    const admin = await seedAdminUser(app);
+    const server = app.getHttpServer() as App;
+
+    const artist = (
+      await request(server)
+        .post('/admin/artists')
+        .set(...authHeader(admin.accessToken))
+        .send({ name: `Artist-${randomUUID()}` })
+        .expect(201)
+    ).body as AdminArtist;
+
+    const draftTrack = (
+      await request(server)
+        .post('/admin/tracks')
+        .set(...authHeader(admin.accessToken))
+        .send({
+          artistId: artist.id,
+          title: 'Draft Track',
+          genre: 'POP',
+          durationSeconds: 100,
+          type: 'FREE',
+          flacFileUrl: flacUrl,
+          coverImageUrl: coverUrl,
+        })
+        .expect(201)
+    ).body as AdminTrack;
+    await request(server)
+      .post(`/admin/tracks/${draftTrack.id}/lyrics`)
+      .set(...authHeader(admin.accessToken))
+      .send({ content: 'Unpublished lyrics' })
+      .expect(201);
+
+    // Unauthenticated: no bearer token on any of these requests.
+    await request(server).get(`/tracks/does-not-exist/lyrics`).expect(404);
+    await request(server).get(`/tracks/${draftTrack.id}/lyrics`).expect(404);
+
+    const publishedTrack = (
+      await request(server)
+        .post('/admin/tracks')
+        .set(...authHeader(admin.accessToken))
+        .send({
+          artistId: artist.id,
+          title: 'Published Track',
+          genre: 'POP',
+          durationSeconds: 100,
+          type: 'FREE',
+          flacFileUrl: flacUrl,
+          coverImageUrl: coverUrl,
+        })
+        .expect(201)
+    ).body as AdminTrack;
+
+    await request(server).get(`/tracks/${publishedTrack.id}/lyrics`).expect(404);
+
+    await request(server)
+      .post(`/admin/tracks/${publishedTrack.id}/lyrics`)
+      .set(...authHeader(admin.accessToken))
+      .send({ content: 'Published lyrics', syncedContent: '[00:01.00]Published lyrics' })
+      .expect(201);
+    await request(server)
+      .post(`/admin/tracks/${publishedTrack.id}/ready`)
+      .set(...authHeader(admin.accessToken))
+      .expect(200);
+    await request(server)
+      .post(`/admin/tracks/${publishedTrack.id}/publish`)
+      .set(...authHeader(admin.accessToken))
+      .expect(200);
+
+    const publicLyrics = await request(server)
+      .get(`/tracks/${publishedTrack.id}/lyrics`)
+      .expect(200);
+    expect(publicLyrics.body).toEqual({
+      trackId: publishedTrack.id,
+      content: 'Published lyrics',
+      syncedContent: '[00:01.00]Published lyrics',
+    });
+    expect(publicLyrics.body).not.toHaveProperty('id');
+    expect(publicLyrics.body).not.toHaveProperty('createdAt');
+    expect(publicLyrics.body).not.toHaveProperty('updatedAt');
+  });
 });
