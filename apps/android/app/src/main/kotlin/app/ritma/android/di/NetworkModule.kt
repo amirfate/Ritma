@@ -5,6 +5,7 @@ import app.ritma.android.data.auth.AuthApi
 import app.ritma.android.data.auth.AuthInterceptor
 import app.ritma.android.data.auth.TokenAuthenticator
 import app.ritma.android.data.catalog.CatalogApi
+import app.ritma.android.data.catalog.LyricsApi
 import app.ritma.android.data.playback.PlaybackApi
 import dagger.Module
 import dagger.Provides
@@ -71,6 +72,10 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideCatalogApi(retrofit: Retrofit): CatalogApi = retrofit.create(CatalogApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideLyricsApi(retrofit: Retrofit): LyricsApi = retrofit.create(LyricsApi::class.java)
 
     @Provides
     @Singleton

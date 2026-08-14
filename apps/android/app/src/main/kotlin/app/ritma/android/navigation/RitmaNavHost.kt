@@ -10,6 +10,7 @@ import app.ritma.android.feature.auth.login.LoginRoute
 import app.ritma.android.feature.auth.verify.VerifyRoute
 import app.ritma.android.feature.catalog.album.AlbumDetailRoute
 import app.ritma.android.feature.catalog.artist.ArtistDetailRoute
+import app.ritma.android.feature.catalog.lyrics.LyricsRoute
 import app.ritma.android.feature.catalog.track.TrackDetailRoute
 import app.ritma.android.feature.home.HomeRoute
 import app.ritma.android.feature.player.PlayerRoute
@@ -70,6 +71,7 @@ fun RitmaNavHost(navController: NavHostController, startDestination: String) {
                 onArtistClick = { artistId -> navController.navigate(RitmaDestination.ArtistDetail.createRoute(artistId)) },
                 onAlbumClick = { albumId -> navController.navigate(RitmaDestination.AlbumDetail.createRoute(albumId)) },
                 onPlayClick = { trackId -> navController.navigate(RitmaDestination.Player.createRoute(trackId)) },
+                onLyricsClick = { trackId -> navController.navigate(RitmaDestination.LyricsDetail.createRoute(trackId)) },
             )
         }
         composable(
@@ -77,6 +79,12 @@ fun RitmaNavHost(navController: NavHostController, startDestination: String) {
             arguments = listOf(navArgument(RitmaDestination.Player.ARG_TRACK_ID) { type = NavType.StringType }),
         ) {
             PlayerRoute()
+        }
+        composable(
+            route = RitmaDestination.LyricsDetail.route,
+            arguments = listOf(navArgument(RitmaDestination.LyricsDetail.ARG_TRACK_ID) { type = NavType.StringType }),
+        ) {
+            LyricsRoute()
         }
     }
 }

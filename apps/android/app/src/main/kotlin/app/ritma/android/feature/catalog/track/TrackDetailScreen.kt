@@ -28,6 +28,7 @@ fun TrackDetailRoute(
     onArtistClick: (String) -> Unit,
     onAlbumClick: (String) -> Unit,
     onPlayClick: (String) -> Unit,
+    onLyricsClick: (String) -> Unit,
     viewModel: TrackDetailViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -36,6 +37,7 @@ fun TrackDetailRoute(
         onArtistClick = onArtistClick,
         onAlbumClick = onAlbumClick,
         onPlayClick = onPlayClick,
+        onLyricsClick = onLyricsClick,
     )
 }
 
@@ -45,6 +47,7 @@ fun TrackDetailScreen(
     onArtistClick: (String) -> Unit,
     onAlbumClick: (String) -> Unit,
     onPlayClick: (String) -> Unit,
+    onLyricsClick: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Scaffold(modifier = modifier.fillMaxSize()) { innerPadding ->
@@ -83,6 +86,10 @@ fun TrackDetailScreen(
                         OutlinedButton(onClick = { onAlbumClick(albumId) }, modifier = Modifier.fillMaxWidth()) {
                             Text("View album")
                         }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedButton(onClick = { onLyricsClick(track.id) }, modifier = Modifier.fillMaxWidth()) {
+                        Text("View lyrics")
                     }
                     Spacer(modifier = Modifier.height(16.dp))
                     Button(onClick = { onPlayClick(track.id) }, modifier = Modifier.fillMaxWidth()) {

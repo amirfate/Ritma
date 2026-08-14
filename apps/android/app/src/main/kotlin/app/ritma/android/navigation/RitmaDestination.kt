@@ -42,6 +42,13 @@ sealed class RitmaDestination(val route: String) {
         fun createRoute(trackId: String): String = "track/$trackId"
     }
 
+    /** Nested under Track, mirroring the API's `tracks/:id/lyrics` and the Admin Dashboard's `/tracks/[id]/lyrics` nesting. */
+    data object LyricsDetail : RitmaDestination("track/{trackId}/lyrics") {
+        const val ARG_TRACK_ID = "trackId"
+
+        fun createRoute(trackId: String): String = "track/$trackId/lyrics"
+    }
+
     data object Player : RitmaDestination("player/{trackId}") {
         const val ARG_TRACK_ID = "trackId"
 

@@ -57,3 +57,13 @@ data class PublicTrack(
     val credits: String? = null,
     val story: String? = null,
 )
+
+/**
+ * `GET /tracks/:id/lyrics` response shape. Published tracks with lyrics
+ * only — 404 otherwise (see [LyricsRepository]), never distinguishing
+ * "track not published" from "no lyrics yet". Deliberately excludes the
+ * Lyrics row's own `id`/`createdAt`/`updatedAt`, same exclusion style as
+ * [PublicTrack] against the admin Track shape.
+ */
+@Serializable
+data class PublicLyrics(val trackId: String, val content: String, val syncedContent: String? = null)
