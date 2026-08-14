@@ -50,8 +50,12 @@ class PositionObserverTest {
 
     @Test
     fun `emits at the approved cadence`() = runTest {
+        // `currentTime` is a `TestScope` extension property, not visible
+        // through the nested `launch { ... }` lambda's own `CoroutineScope`
+        // receiver — captured explicitly here so it resolves.
+        val testScope = this
         val tickTimestamps = mutableListOf<Long>()
-        val job = launch { observePosition(INTERVAL_MS, positionMsProvider = { 1_000L }) { tickTimestamps.add(currentTime) } }
+        val job = launch { observePosition(INTERVAL_MS, positionMsProvider = { 1_000L }) { tickTimestamps.add(testScope.currentTime) } }
 
         advanceTimeBy(INTERVAL_MS * 4)
         runCurrent()
