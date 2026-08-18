@@ -14,24 +14,30 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.ritma.android.data.lyrics.SyncedLyricLine
 
 @Composable
 fun LyricsRoute(viewModel: LyricsViewModel = hiltViewModel()) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    LyricsScreen(uiState = uiState)
+    val activeLine by viewModel.activeLine.collectAsStateWithLifecycle()
+    LyricsScreen(uiState = uiState, activeLine = activeLine)
 }
 
 /**
- * Static lyrics only — renders [app.ritma.android.data.catalog.PublicLyrics.content]
- * verbatim. `syncedContent` is deliberately not read or parsed here (M8
- * Phase 2 scope); a future phase may add timed highlighting on top of this
- * screen without changing this static rendering path.
+ * Renders [app.ritma.android.data.catalog.PublicLyrics.content] verbatim
+ * when a track has no valid synced lines (`syncedLyrics.lines.isEmpty()` —
+ * `syncedContent` was null or entirely malformed), matching M8 Phase 2's
+ * static behavior exactly. When valid synced lines exist, each line is
+ * rendered separately with the current [activeLine] bolded and
+ * highlighted — no animation, no auto-scroll subsystem, no karaoke/
+ * word-level behavior, per the locked Beta UI scope.
  */
 @Composable
-fun LyricsScreen(uiState: LyricsUiState, modifier: Modifier = Modifier) {
+fun LyricsScreen(uiState: LyricsUiState, activeLine: SyncedLyricLine?, modifier: Modifier = Modifier) {
     Scaffold(modifier = modifier.fillMaxSize()) { innerPadding ->
         when (uiState) {
             LyricsUiState.Loading -> {
@@ -44,7 +50,23 @@ fun LyricsScreen(uiState: LyricsUiState, modifier: Modifier = Modifier) {
                     modifier =
                         Modifier.fillMaxSize().padding(innerPadding).verticalScroll(rememberScrollState()).padding(24.dp),
                 ) {
-                    Text(text = uiState.lyrics.content, style = MaterialTheme.typography.bodyLarge)
+                    if (uiState.syncedLyrics.lines.isEmpty()) {
+                        Text(text = uiState.lyrics.content, style = MaterialTheme.typography.bodyLarge)
+                    } else {
+                        uiState.syncedLyrics.lines.forEach { line ->
+                            val isActive = line == activeLine
+                            Text(
+                                text = line.text,
+                                style =
+                                    if (isActive) {
+                                        MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
+                                    } else {
+                                        MaterialTheme.typography.bodyLarge
+                                    },
+                                color = if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                            )
+                        }
+                    }
                 }
             }
             LyricsUiState.Unavailable -> {

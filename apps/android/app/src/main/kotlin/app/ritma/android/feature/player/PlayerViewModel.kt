@@ -14,6 +14,7 @@ import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import app.ritma.android.data.playback.CreateSessionOutcome
 import app.ritma.android.data.playback.PlaybackAccessType
 import app.ritma.android.data.playback.PlaybackDataSourceFactory
+import app.ritma.android.data.playback.PlaybackPositionHolder
 import app.ritma.android.data.playback.PlaybackRepository
 import app.ritma.android.data.playback.PlaybackStreamError
 import app.ritma.android.data.playback.classifyPlaybackError
@@ -60,6 +61,7 @@ constructor(
     @ApplicationContext private val context: Context,
     private val playbackRepository: PlaybackRepository,
     private val dataSourceFactory: PlaybackDataSourceFactory,
+    private val positionHolder: PlaybackPositionHolder,
     @ApplicationScope private val applicationScope: CoroutineScope,
 ) : ViewModel() {
 
@@ -147,7 +149,9 @@ constructor(
      * i.e. `Dispatchers.Main.immediate`, the thread ExoPlayer requires
      * `currentPosition` to be read from. Never `applicationScope`: unlike
      * `endSessionOnce`, this is a pure UI concern that must die with the
-     * ViewModel, not survive `onCleared()`.
+     * ViewModel, not survive `onCleared()`. Each tick is forwarded verbatim
+     * to [positionHolder] (M9's cross-screen bridge for synced lyrics) —
+     * the same value, the same 250ms cadence, not a second observer.
      */
     private fun startPositionObserver() {
         positionJob?.cancel()
@@ -155,6 +159,7 @@ constructor(
             viewModelScope.launch {
                 observePosition(POSITION_POLL_INTERVAL_MS, positionMsProvider = { player?.currentPosition }) { positionMs ->
                     _uiState.update { state -> if (state is PlayerUiState.Ready) state.copy(positionMs = positionMs) else state }
+                    positionHolder.publish(positionMs)
                 }
             }
     }
