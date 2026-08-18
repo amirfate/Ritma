@@ -1,3 +1,3 @@
-import base from '@ritma/configs/eslint/base';
+import base from '@ritma/tooling/eslint/base';
 
 export default base;

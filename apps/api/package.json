@@ -1,0 +1,72 @@
+{
+  "name": "@ritma/api",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Ritma API — NestJS modular monolith.",
+  "license": "UNLICENSED",
+  "scripts": {
+    "build": "nest build",
+    "start": "node dist/main.js",
+    "start:dev": "nest start --watch",
+    "start:debug": "nest start --debug --watch",
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:cov": "jest --coverage",
+    "test:e2e": "jest --config test/jest-e2e.json",
+    "clean": "rm -rf dist .turbo coverage"
+  },
+  "dependencies": {
+    "@nestjs/common": "^11.1.0",
+    "@nestjs/config": "^4.0.0",
+    "@nestjs/core": "^11.1.0",
+    "@nestjs/jwt": "^11.0.0",
+    "@nestjs/platform-express": "^11.1.0",
+    "@nestjs/throttler": "^6.4.0",
+    "@prisma/client": "^6.2.0",
+    "@ritma/api-contracts": "workspace:*",
+    "@ritma/config": "workspace:*",
+    "@ritma/database": "workspace:*",
+    "@ritma/logger": "workspace:*",
+    "@ritma/shared": "workspace:*",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.1",
+    "ioredis": "^5.4.0",
+    "minio": "^8.0.7",
+    "nestjs-pino": "^4.4.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.0"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^11.0.0",
+    "@nestjs/schematics": "^11.0.0",
+    "@nestjs/testing": "^11.1.0",
+    "@ritma/tooling": "workspace:*",
+    "@types/express": "^5.0.0",
+    "@types/jest": "^29.5.0",
+    "@types/node": "^22.0.0",
+    "@types/supertest": "^6.0.0",
+    "dotenv": "^16.4.0",
+    "eslint": "^9.30.0",
+    "jest": "^29.7.0",
+    "supertest": "^7.0.0",
+    "ts-jest": "^29.2.0",
+    "typescript": "^5.8.0"
+  },
+  "jest": {
+    "preset": "ts-jest",
+    "testEnvironment": "node",
+    "rootDir": "src",
+    "testRegex": ".*\\.spec\\.ts$",
+    "setupFiles": [
+      "<rootDir>/../test/jest.setup.ts"
+    ],
+    "collectCoverageFrom": [
+      "**/*.ts",
+      "!main.ts"
+    ],
+    "coverageDirectory": "../coverage",
+    "maxWorkers": 1
+  }
+}

@@ -33,7 +33,7 @@ updates:
     open-pull-requests-limit: 3
 
   - package-ecosystem: docker
-    directory: /docker/backend
+    directory: /infrastructure/docker/api
     schedule:
       interval: weekly
       day: monday

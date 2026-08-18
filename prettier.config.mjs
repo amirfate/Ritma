@@ -1,3 +1,3 @@
-import config from '@ritma/configs/prettier';
+import config from '@ritma/tooling/prettier';
 
 export default config;

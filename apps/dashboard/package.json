@@ -1,0 +1,30 @@
+{
+  "name": "@ritma/dashboard",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Ritma Artist and Administrator web dashboard.",
+  "license": "UNLICENSED",
+  "scripts": {
+    "dev": "next dev -p 5173",
+    "build": "next build",
+    "start": "next start -p 5173",
+    "typecheck": "next typegen && tsc --noEmit",
+    "lint": "next typegen && eslint .",
+    "test": "node --test 'lib/**/*.test.ts'",
+    "clean": "rm -rf .next .turbo"
+  },
+  "dependencies": {
+    "@ritma/api-contracts": "workspace:*",
+    "next": "^15.1.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@ritma/tooling": "workspace:*",
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "eslint": "^9.30.0",
+    "typescript": "^5.8.0"
+  }
+}

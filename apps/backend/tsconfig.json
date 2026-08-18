@@ -1,9 +1,0 @@
-{
-  "extends": "@ritma/configs/typescript/nest.json",
-  "compilerOptions": {
-    "outDir": "dist",
-    "baseUrl": ".",
-    "types": ["node", "jest"]
-  },
-  "include": ["src/**/*.ts", "test/**/*.ts"]
-}

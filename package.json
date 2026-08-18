@@ -17,13 +17,13 @@
     "format": "prettier --check .",
     "format:fix": "prettier --write .",
     "clean": "turbo run clean",
-    "dev:backend": "pnpm --filter @ritma/backend start:dev",
+    "dev:api": "pnpm --filter @ritma/api start:dev",
     "prepare": "husky"
   },
   "devDependencies": {
     "@commitlint/cli": "^19.8.0",
     "@commitlint/config-conventional": "^19.8.0",
-    "@ritma/configs": "workspace:*",
+    "@ritma/tooling": "workspace:*",
     "husky": "^9.1.7",
     "lint-staged": "^16.1.0",
     "prettier": "^3.6.0",

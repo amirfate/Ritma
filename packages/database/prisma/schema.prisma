@@ -1,0 +1,473 @@
+// Prisma schema for the Ritma platform.
+//
+// Models map 1:1 to the locked specification's required entities: users,
+// devices, artists, albums, tracks, lyrics, playlists, playlist_tracks,
+// purchases, donations, wallets, settlements, invitations,
+// playback_sessions, audit_logs. No entity beyond this list is defined.
+//
+// This schema defines shape only (fields, relations, indexes). Business
+// rule *enforcement* — OTP cooldowns, device/stream limits, invitation
+// caps, revenue-split calculation, track lifecycle transitions — is
+// application logic added by the milestones that implement those flows,
+// not the database layer.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+/// Listener, Artist, Administrator — the three roles defined by the spec.
+enum UserRole {
+  LISTENER
+  ARTIST
+  ADMIN
+
+  @@map("user_role")
+}
+
+/// Free tracks stream in full; paid tracks require a purchase after preview.
+enum TrackType {
+  FREE
+  PAID
+
+  @@map("track_type")
+}
+
+/// Draft -> Ready -> Published -> Unpublished -> Archived. Archive is the
+/// only terminal state; physical deletion of a track is forbidden by the
+/// spec. Unpublished is distinct from Archived: it is a reversible-in-
+/// principle takedown (an admin chose to stop showing a previously
+/// published track), whereas Archived is final.
+enum TrackStatus {
+  DRAFT
+  READY
+  PUBLISHED
+  UNPUBLISHED
+  ARCHIVED
+
+  @@map("track_status")
+}
+
+/// The fixed genre list defined by the spec.
+enum Genre {
+  POP
+  TRADITIONAL
+  ROCK
+  RAP
+  ELECTRONIC
+  CLASSICAL
+  FUSION
+
+  @@map("genre")
+}
+
+/// PENDING: created, not yet redeemed. ACCEPTED: redeemed, below the global
+/// cap. WAITLISTED: created while the global 100-user cap was already met.
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  WAITLISTED
+
+  @@map("invitation_status")
+}
+
+/// The audit event categories required by the spec's security section,
+/// plus the three invitation-flow events added by the invitation
+/// milestone. The original eight are locked and must never be renamed or
+/// removed.
+enum AuditEventType {
+  LOGIN
+  LOGOUT
+  DEVICE_CHANGE
+  PURCHASE
+  DONATION
+  PUBLISH
+  SETTLEMENT
+  ADMIN_ACTION
+  INVITATION_CREATED
+  INVITATION_ACCEPTED
+  INVITATION_REJECTED
+
+  @@map("audit_event_type")
+}
+
+/// The authorization basis under which a PlaybackSession was created —
+/// fixed at creation time and never recomputed afterward, since Track.type
+/// and Purchase are both mutable and cannot reliably reconstruct what was
+/// true at the moment playback started (Milestone 5).
+enum PlaybackAccessType {
+  /// A PAID track streamed with no matching Purchase — clamped to a
+  /// 30-second preview.
+  PREVIEW
+  /// A FREE track — full stream, no purchase required.
+  FULL_FREE
+  /// A PAID track with a matching Purchase — full stream.
+  FULL_PURCHASED
+
+  @@map("playback_access_type")
+}
+
+// ---------------------------------------------------------------------------
+// Identity and devices
+// ---------------------------------------------------------------------------
+
+model User {
+  id          String   @id @default(cuid())
+  phoneNumber String   @unique @map("phone_number")
+  role        UserRole @default(LISTENER)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  artist              Artist?
+  devices             Device[]
+  playlists           Playlist[]
+  purchases           Purchase[]
+  donations           Donation[]
+  playbackSessions    PlaybackSession[]
+  auditLogs           AuditLog[]
+  settlementsRecorded Settlement[]      @relation("SettlementRecordedBy")
+  invitationsSent     Invitation[]      @relation("InvitationInviter")
+  invitationRedeemed  Invitation?       @relation("InvitationRedeemedBy")
+
+  @@index([role])
+  @@map("users")
+}
+
+/// A logged-in device/session. Max two active (revokedAt null) devices per
+/// user; the oldest is auto-revoked when a third logs in (enforced in the
+/// auth module, not here).
+model Device {
+  id          String    @id @default(cuid())
+  userId      String    @map("user_id")
+  fingerprint String
+  platform    String
+  label       String?
+  lastSeenAt  DateTime  @default(now()) @map("last_seen_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  revokedAt   DateTime? @map("revoked_at")
+
+  /// Hash of the current refresh token issued to this device, so it can be
+  /// invalidated immediately on logout or on being revoked, ahead of its
+  /// natural JWT expiry. The plaintext refresh token itself is never
+  /// stored.
+  refreshTokenHash      String?   @map("refresh_token_hash")
+  refreshTokenExpiresAt DateTime? @map("refresh_token_expires_at")
+
+  user             User              @relation(fields: [userId], references: [id])
+  playbackSessions PlaybackSession[]
+
+  @@unique([userId, fingerprint])
+  @@index([userId, revokedAt])
+  @@map("devices")
+}
+
+// ---------------------------------------------------------------------------
+// Catalog: artists, albums, tracks, lyrics
+// ---------------------------------------------------------------------------
+
+model Artist {
+  id              String   @id @default(cuid())
+  /// Nullable: an administrator can create an artist profile before the
+  /// artist's own account is linked.
+  userId          String?  @unique @map("user_id")
+  name            String
+  bio             String?
+  /// Revenue share in basis points (9000 = 90.00%). Defaults to the locked
+  /// 90/10 split; an administrator may override per artist.
+  revenueShareBps Int      @default(9000) @map("revenue_share_bps")
+  /// Admin enable/disable switch. A disabled artist is hidden from the
+  /// public catalog and cannot have new tracks published (existing
+  /// published tracks are unaffected — disabling doesn't cascade).
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  user      User?      @relation(fields: [userId], references: [id])
+  albums    Album[]
+  tracks    Track[]
+  donations Donation[]
+  wallet    Wallet?
+
+  @@index([isActive])
+  @@map("artists")
+}
+
+/// Album purchases are disabled in beta: an album is a grouping and
+/// metadata container only, with no purchase relation of its own.
+model Album {
+  id            String    @id @default(cuid())
+  artistId      String    @map("artist_id")
+  title         String
+  coverImageUrl String    @map("cover_image_url")
+  releasedAt    DateTime? @map("released_at")
+  /// Admin-controlled visibility switch, independent of any track's own
+  /// status — the public catalog only lists published albums.
+  isPublished   Boolean   @default(false) @map("is_published")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  artist Artist  @relation(fields: [artistId], references: [id])
+  tracks Track[]
+
+  @@index([artistId])
+  @@index([isPublished])
+  @@map("albums")
+}
+
+model Track {
+  id       String  @id @default(cuid())
+  artistId String  @map("artist_id")
+  albumId  String? @map("album_id")
+
+  title           String
+  genre           Genre
+  durationSeconds Int         @map("duration_seconds")
+  type            TrackType
+  /// Required when type = PAID; null when FREE (enforced in application
+  /// logic — Prisma cannot express a conditional-required column).
+  price           Decimal?    @db.Decimal(10, 2)
+  flacFileUrl     String      @map("flac_file_url")
+  coverImageUrl   String      @map("cover_image_url")
+  credits         String?
+  story           String?
+  status          TrackStatus @default(DRAFT)
+
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  publishedAt DateTime? @map("published_at")
+  archivedAt  DateTime? @map("archived_at")
+
+  artist           Artist            @relation(fields: [artistId], references: [id])
+  album            Album?            @relation(fields: [albumId], references: [id])
+  lyrics           Lyrics?
+  playlistTracks   PlaylistTrack[]
+  purchases        Purchase[]
+  playbackSessions PlaybackSession[]
+
+  @@index([artistId])
+  @@index([albumId])
+  @@index([status])
+  @@index([genre])
+  @@map("tracks")
+}
+
+/// Standard lyrics are required content for a track once written; synced
+/// (timed) lyrics are optional and present only for selected tracks.
+model Lyrics {
+  id            String   @id @default(cuid())
+  trackId       String   @unique @map("track_id")
+  content       String
+  syncedContent String?  @map("synced_content")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  track Track @relation(fields: [trackId], references: [id])
+
+  @@map("lyrics")
+}
+
+// ---------------------------------------------------------------------------
+// Playlists
+// ---------------------------------------------------------------------------
+
+model Playlist {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  name      String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user   User            @relation(fields: [userId], references: [id])
+  tracks PlaylistTrack[]
+
+  @@index([userId])
+  @@map("playlists")
+}
+
+model PlaylistTrack {
+  id         String   @id @default(cuid())
+  playlistId String   @map("playlist_id")
+  trackId    String   @map("track_id")
+  position   Int
+  addedAt    DateTime @default(now()) @map("added_at")
+
+  playlist Playlist @relation(fields: [playlistId], references: [id])
+  track    Track    @relation(fields: [trackId], references: [id])
+
+  @@unique([playlistId, trackId])
+  @@index([trackId])
+  @@map("playlist_tracks")
+}
+
+// ---------------------------------------------------------------------------
+// Commerce: purchases, donations, wallets, settlements
+// ---------------------------------------------------------------------------
+
+/// A purchase grants permanent streaming rights to one track. It does not
+/// grant download rights, and there is no album-purchase counterpart.
+model Purchase {
+  id               String   @id @default(cuid())
+  userId           String   @map("user_id")
+  trackId          String   @map("track_id")
+  pricePaid        Decimal  @map("price_paid") @db.Decimal(10, 2)
+  artistShare      Decimal  @map("artist_share") @db.Decimal(10, 2)
+  platformShare    Decimal  @map("platform_share") @db.Decimal(10, 2)
+  /// Bank Mellat transaction reference.
+  paymentReference String   @map("payment_reference")
+  purchasedAt      DateTime @default(now()) @map("purchased_at")
+
+  user  User  @relation(fields: [userId], references: [id])
+  track Track @relation(fields: [trackId], references: [id])
+
+  @@unique([userId, trackId])
+  @@map("purchases")
+}
+
+/// A donation sends 100% of its amount to the artist. No campaigns, no
+/// listener wallet — settlement to the artist happens manually.
+model Donation {
+  id               String   @id @default(cuid())
+  userId           String   @map("user_id")
+  artistId         String   @map("artist_id")
+  amount           Decimal  @db.Decimal(10, 2)
+  /// Bank Mellat transaction reference.
+  paymentReference String   @map("payment_reference")
+  donatedAt        DateTime @default(now()) @map("donated_at")
+
+  user   User   @relation(fields: [userId], references: [id])
+  artist Artist @relation(fields: [artistId], references: [id])
+
+  @@index([artistId])
+  @@map("donations")
+}
+
+/// The artist's earnings ledger (accumulated purchase share + donations
+/// awaiting manual settlement). This is not a listener/user wallet — the
+/// spec explicitly forbids one; `GET /wallet` reads this per artist.
+///
+/// `balance` can only ever be increased by a Purchase or a Donation, and
+/// only ever decreased by a Settlement — there is no top-up path. A
+/// database CHECK constraint (`wallets_balance_non_negative`, added in the
+/// `wallet_ledger_invariants` migration) additionally guarantees the
+/// balance never goes negative.
+model Wallet {
+  id        String   @id @default(cuid())
+  artistId  String   @unique @map("artist_id")
+  balance   Decimal  @default(0) @db.Decimal(12, 2)
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  artist      Artist       @relation(fields: [artistId], references: [id])
+  settlements Settlement[]
+
+  @@map("wallets")
+}
+
+/// A manual settlement payout recorded by an administrator. There is no
+/// automated payout processor in scope: `recordedById` is a required,
+/// non-nullable reference to the administrator who performed it, so every
+/// row is attributable to a human action, never a scheduled job. A
+/// database CHECK constraint (`settlements_amount_positive`, added in the
+/// `wallet_ledger_invariants` migration) guarantees a settlement always
+/// removes a positive amount — it can never be used to inflate a wallet.
+model Settlement {
+  id           String   @id @default(cuid())
+  walletId     String   @map("wallet_id")
+  amount       Decimal  @db.Decimal(12, 2)
+  recordedById String   @map("recorded_by_id")
+  note         String?
+  settledAt    DateTime @default(now()) @map("settled_at")
+
+  wallet     Wallet @relation(fields: [walletId], references: [id])
+  recordedBy User   @relation("SettlementRecordedBy", fields: [recordedById], references: [id])
+
+  @@index([walletId])
+  @@map("settlements")
+}
+
+// ---------------------------------------------------------------------------
+// Invitations
+// ---------------------------------------------------------------------------
+
+/// Invite-only beta: a global cap of 100 users and a maximum of 10
+/// invitations per inviter are enforced by the invitation module, not by
+/// this schema.
+model Invitation {
+  id        String           @id @default(cuid())
+  code      String           @unique
+  inviterId String           @map("inviter_id")
+  status    InvitationStatus @default(PENDING)
+  /// Set when the inviter targets a specific phone number at creation, or
+  /// filled in from the phone number actually used once someone attempts
+  /// to redeem the code — either way, "the invitee phone number when
+  /// known" per the spec.
+  inviteePhoneNumber String?   @map("invitee_phone_number")
+  redeemedById       String?   @unique @map("redeemed_by_id")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  redeemedAt         DateTime? @map("redeemed_at")
+
+  inviter    User  @relation("InvitationInviter", fields: [inviterId], references: [id])
+  redeemedBy User? @relation("InvitationRedeemedBy", fields: [redeemedById], references: [id])
+
+  @@index([inviterId])
+  @@index([status])
+  @@map("invitations")
+}
+
+// ---------------------------------------------------------------------------
+// Streaming
+// ---------------------------------------------------------------------------
+
+/// One row per stream. The "max one simultaneous stream per listener" rule
+/// is enforced by the streaming module (an open session with endedAt null,
+/// started within the bounded session TTL, blocks a new one), not by this
+/// schema. There is no lastActivityAt/heartbeat column: Milestone 5 defines
+/// no fast-reclaim SLA, so a stale session is reclaimed lazily once
+/// startedAt falls outside the TTL, with no client keepalive mechanism.
+model PlaybackSession {
+  id          String    @id @default(cuid())
+  userId      String    @map("user_id")
+  deviceId    String    @map("device_id")
+  trackId     String    @map("track_id")
+  streamToken String    @unique @map("stream_token")
+  startedAt   DateTime  @default(now()) @map("started_at")
+  endedAt     DateTime? @map("ended_at")
+
+  /// The authorization basis fixed at session creation — see
+  /// PlaybackAccessType.
+  accessType PlaybackAccessType @map("access_type")
+
+  user   User   @relation(fields: [userId], references: [id])
+  device Device @relation(fields: [deviceId], references: [id])
+  track  Track  @relation(fields: [trackId], references: [id])
+
+  @@index([userId, endedAt])
+  @@map("playback_sessions")
+}
+
+// ---------------------------------------------------------------------------
+// Audit log
+// ---------------------------------------------------------------------------
+
+/// Append-only. Never stores OTP codes, JWT secrets, or payment secrets —
+/// enforced by what callers choose to put in `metadata`, not by the schema.
+model AuditLog {
+  id          String         @id @default(cuid())
+  actorUserId String?        @map("actor_user_id")
+  eventType   AuditEventType @map("event_type")
+  metadata    Json?
+  createdAt   DateTime       @default(now()) @map("created_at")
+
+  actor User? @relation(fields: [actorUserId], references: [id])
+
+  @@index([eventType])
+  @@index([actorUserId])
+  @@map("audit_logs")
+}

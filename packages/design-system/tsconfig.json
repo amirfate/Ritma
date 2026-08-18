@@ -1,5 +1,5 @@
 {
-  "extends": "@ritma/configs/typescript/library.json",
+  "extends": "@ritma/tooling/typescript/library.json",
   "compilerOptions": {
     "rootDir": "src",
     "outDir": "dist"
