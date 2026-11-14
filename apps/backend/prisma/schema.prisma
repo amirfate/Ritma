@@ -1,0 +1,178 @@
+// Ritma — Prisma schema (PostgreSQL)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum UserPlan {
+  FREE
+  PREMIUM
+}
+
+model User {
+  id            String         @id @default(cuid())
+  email         String         @unique
+  passwordHash  String
+  name          String
+  role          Role           @default(USER)
+  plan          UserPlan       @default(FREE)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  refreshTokens RefreshToken[]
+  artist        Artist?
+  orders        Order[]
+  subscriptions Subscription[]
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  expiresAt DateTime
+  revoked   Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model Artist {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  bio         String?
+  imageUrl    String?
+  ownerUserId String?  @unique
+  owner       User?    @relation(fields: [ownerUserId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  albums Album[]
+  tracks Track[]
+}
+
+model Album {
+  id          String    @id @default(cuid())
+  artistId    String
+  artist      Artist    @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  slug        String
+  title       String
+  coverUrl    String?
+  releaseDate DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  tracks Track[]
+
+  @@unique([artistId, slug])
+}
+
+model Track {
+  id            String      @id @default(cuid())
+  artistId      String
+  artist        Artist      @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  albumId       String?
+  album         Album?      @relation(fields: [albumId], references: [id])
+  title         String
+  audioUrl      String?
+  durationSec   Int         @default(0)
+  position      Int         @default(0)
+  coverUrl      String?
+  lyrics        String?
+  syncedContent String?
+  isSellable    Boolean     @default(false)
+  priceIrR      Int         @default(0)
+  isPublished   Boolean     @default(false)
+  playCount     Int         @default(0)
+  releaseDate   DateTime?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  playEvents PlayEvent[]
+
+  @@index([artistId])
+  @@index([albumId])
+}
+
+model PlayEvent {
+  id        String   @id @default(cuid())
+  trackId   String
+  track     Track    @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  userId    String?
+  createdAt DateTime @default(now())
+
+  @@index([trackId])
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  CANCELED
+  FAILED
+}
+
+model Plan {
+  id           String  @id @default(cuid())
+  code         String  @unique
+  title        String
+  durationDays Int
+  priceIrR     Int
+  isActive     Boolean @default(true)
+  orders       Order[]
+}
+
+model Order {
+  id        String        @id @default(cuid())
+  userId    String
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  planId    String
+  plan      Plan          @relation(fields: [planId], references: [id])
+  status    OrderStatus   @default(PENDING)
+  amountIrR Int
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  payments PaymentEvent[]
+}
+
+enum PaymentStatus {
+  INIT
+  REDIRECTED
+  VERIFIED
+  FAILED
+}
+
+model PaymentEvent {
+  id        String        @id @default(cuid())
+  orderId   String
+  order     Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  gateway   String
+  authority String?
+  status    PaymentStatus @default(INIT)
+  amountIrR Int
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+}
+
+model Subscription {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  startsAt  DateTime @default(now())
+  endsAt    DateTime
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
