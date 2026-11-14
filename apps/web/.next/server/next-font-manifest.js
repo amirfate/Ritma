@@ -1,1 +1,0 @@
-self.__NEXT_FONT_MANIFEST='{"pages":{},"app":{"/workspace/ritma-mono/apps/web/app/layout":["static/media/6bbfec961cf2e4c4-s.p.ttf","static/media/c635278eb7470145-s.p.ttf"]},"appUsingSizeAdjust":true,"pagesUsingSizeAdjust":false}';

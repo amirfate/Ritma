@@ -26,3 +26,5 @@ pnpm-debug.log*
 .vscode/
 *.swp
 .DS_Store
+# build outputs
+.next/
