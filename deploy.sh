@@ -59,9 +59,11 @@ if [ ! -f "$WEB_DIR/.env.local" ]; then
   log "created $WEB_DIR/.env.local (API_URL=127.0.0.1:$API_PORT)"
 fi
 
-# 3) install + build
+# 3) install + generate + build
 log "pnpm install..."
 pnpm install --frozen-lockfile || pnpm install
+log "prisma generate (build fails without it on a fresh clone)..."
+(cd "$BACKEND_DIR" && pnpm exec prisma generate)
 log "build (turbo)..."
 pnpm build
 
