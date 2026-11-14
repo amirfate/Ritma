@@ -1,0 +1,13 @@
+{
+  "/_not-found/page": "app/_not-found/page.js",
+  "/albums/page": "app/albums/page.js",
+  "/albums/[slug]/page": "app/albums/[slug]/page.js",
+  "/artists/page": "app/artists/page.js",
+  "/payments/callback/page": "app/payments/callback/page.js",
+  "/login/page": "app/login/page.js",
+  "/payments/mock-pay/page": "app/payments/mock-pay/page.js",
+  "/artists/[slug]/page": "app/artists/[slug]/page.js",
+  "/page": "app/page.js",
+  "/register/page": "app/register/page.js",
+  "/pricing/page": "app/pricing/page.js"
+}

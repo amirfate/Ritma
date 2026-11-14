@@ -183,4 +183,15 @@ export class TracksService {
     const url = `/tracks/${trackId}/stream?exp=${exp}&sig=${signStreamToken(trackId, exp)}`;
     return { url, ttl: STREAM_TTL_SECONDS };
   }
+
+  /** Registers a play event and bumps the track play counter. */
+  async registerPlay(trackId: string, userId?: string): Promise<{ ok: true }> {
+    const track = await this.prisma.track.findUnique({ where: { id: trackId } });
+    if (!track) throw new NotFoundException('ترک یافت نشد');
+    await this.prisma.$transaction([
+      this.prisma.playEvent.create({ data: { trackId, userId: userId ?? null } }),
+      this.prisma.track.update({ where: { id: trackId }, data: { playCount: { increment: 1 } } }),
+    ]);
+    return { ok: true };
+  }
 }

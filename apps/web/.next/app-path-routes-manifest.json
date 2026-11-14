@@ -1,0 +1,13 @@
+{
+  "/_not-found/page": "/_not-found",
+  "/albums/page": "/albums",
+  "/albums/[slug]/page": "/albums/[slug]",
+  "/artists/page": "/artists",
+  "/payments/callback/page": "/payments/callback",
+  "/login/page": "/login",
+  "/payments/mock-pay/page": "/payments/mock-pay",
+  "/artists/[slug]/page": "/artists/[slug]",
+  "/page": "/",
+  "/register/page": "/register",
+  "/pricing/page": "/pricing"
+}

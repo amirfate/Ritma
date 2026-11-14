@@ -1,0 +1,15 @@
+{
+  "headers": {
+    "x-nextjs-stale-time": "300",
+    "x-nextjs-prerender": "1",
+    "x-next-cache-tags": "_N_T_/layout,_N_T_/payments/layout,_N_T_/payments/mock-pay/layout,_N_T_/payments/mock-pay/page,_N_T_/payments/mock-pay"
+  },
+  "routeCache": {
+    "key": "/route-cache/APP_PAGE/b90093b8762bf9df4ce2943015c23c3561267945b354b8d0a59050269660ee2c/$/payments/mock-pay",
+    "owner": {
+      "kind": "APP_PAGE",
+      "sourceRoute": "/payments/mock-pay/page"
+    },
+    "isFallback": false
+  }
+}

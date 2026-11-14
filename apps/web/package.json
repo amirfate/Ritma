@@ -1,0 +1,32 @@
+{
+  "name": "@ritma/web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Ritma web — Next.js front-end (RTL Persian).",
+  "license": "UNLICENSED",
+  "scripts": {
+    "dev": "next dev -p 3001",
+    "build": "next build",
+    "start": "next start -p 3001",
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node -e \"process.stdout.write('web tests: smoke placeholder\\n')\"",
+    "clean": "rm -rf .next .turbo"
+  },
+  "dependencies": {
+    "@ritma/api-contracts": "workspace:*",
+    "@ritma/shared": "workspace:*",
+    "next": "^15.5.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@ritma/configs": "workspace:*",
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "eslint": "^9.30.0",
+    "globals": "^16.5.0",
+    "typescript": "^5.8.0"
+  }
+}
