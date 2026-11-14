@@ -1,5 +1,6 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 
+import { AuditService } from '../audit/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
 
 export interface PaymentGateway {
@@ -30,7 +31,10 @@ export class MockGateway implements PaymentGateway {
 export class PaymentsService {
   private readonly gateways: Map<string, PaymentGateway> = new Map([['mock', new MockGateway()]]);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly audit: AuditService,
+  ) {}
 
   plans(): Promise<unknown> {
     return this.prisma.plan.findMany({ where: { isActive: true }, orderBy: { priceIrR: 'asc' } });
@@ -94,6 +98,13 @@ export class PaymentsService {
         data: { userId: order.userId, endsAt: new Date(Date.now() + durationMs) },
       }),
     ]);
+    this.audit.log({
+      actorUserId: order.userId,
+      action: 'payments.order.paid',
+      entityType: 'Order',
+      entityId: orderId,
+      after: { amountIrR: order.amountIrR, gateway: 'mock' },
+    });
     return { status: 'PAID' };
   }
 

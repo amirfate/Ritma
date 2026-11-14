@@ -28,8 +28,11 @@ model User {
   plan          UserPlan       @default(FREE)
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
-  refreshTokens RefreshToken[]
-  artist        Artist?
+  refreshTokens  RefreshToken[]
+  deviceSessions DeviceSession[]
+  invitesSent    Invite[]        @relation("InviteInviter")
+  inviteUsed     Invite?         @relation("InviteUsed")
+  artist         Artist?
   orders        Order[]
   subscriptions Subscription[]
 }
@@ -176,4 +179,56 @@ model Subscription {
   updatedAt DateTime @updatedAt
 
   @@index([userId])
+}
+
+/// Beta invite codes — registration during beta requires a valid code.
+/// Each user may have at most BETA_MAX_INVITES_PER_USER (10) successful invites.
+model Invite {
+  id              String    @id @default(cuid())
+  code            String    @unique
+  invitedByUserId String
+  invitedBy       User      @relation("InviteInviter", fields: [invitedByUserId], references: [id])
+  note            String?
+  usedByUserId    String?   @unique
+  usedBy          User?     @relation("InviteUsed", fields: [usedByUserId], references: [id])
+  usedAt          DateTime?
+  revoked         Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+
+  @@index([invitedByUserId])
+}
+
+/// One row per active device (hashed fingerprint) per user.
+/// Beta allows at most BETA_MAX_DEVICES_PER_USER (2) active devices.
+model DeviceSession {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deviceKey  String   // sha256 of UA + client hint — never store raw UA of others
+  deviceName String?
+  lastIp     String?
+  lastSeenAt DateTime @default(now())
+  revoked    Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  @@unique([userId, deviceKey])
+  @@index([userId])
+}
+
+/// Append-only log of sensitive operations (admin dashboard section 18).
+model AuditLog {
+  id           String   @id @default(cuid())
+  actorUserId  String?
+  actorEmail   String?
+  action       String   // e.g. auth.register, catalog.track.create, payments.order.paid
+  entityType   String
+  entityId     String?
+  before       Json?
+  after        Json?
+  ip           String?
+  createdAt    DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([actorUserId])
+  @@index([createdAt])
 }

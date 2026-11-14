@@ -76,6 +76,17 @@ async function main(): Promise<void> {
       },
     });
   }
+  // Beta invites for the admin (phase 1)
+  const admin = await prisma.user.findUnique({ where: { email: 'amir@ritma.app' } });
+  if (admin) {
+    for (const code of ['RITMA-DEMO001', 'RITMA-DEMO002', 'RITMA-DEMO003']) {
+      await prisma.invite.upsert({
+        where: { code },
+        update: {},
+        create: { code, invitedByUserId: admin.id, note: 'seed demo invite' },
+      });
+    }
+  }
   console.log('seed done');
 }
 

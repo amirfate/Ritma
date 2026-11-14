@@ -7,6 +7,11 @@ import {
 } from 'class-validator';
 
 export class RegisterDto {
+  @IsString()
+  @MinLength(6)
+  @MaxLength(40)
+  inviteCode!: string;
+
   @IsEmail()
   email!: string;
 

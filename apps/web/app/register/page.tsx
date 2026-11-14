@@ -9,6 +9,7 @@ export default function RegisterPage(): ReactElement {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [inviteCode, setInviteCode] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -17,7 +18,7 @@ export default function RegisterPage(): ReactElement {
     setBusy(true);
     setError('');
     try {
-      await register(email, name, password);
+      await register(email, name, password, inviteCode.trim().toUpperCase());
       window.location.href = '/';
     } catch (err) {
       setError(err instanceof Error ? err.message : 'خطای غیرمنتظره');
@@ -44,6 +45,15 @@ export default function RegisterPage(): ReactElement {
         dir="ltr"
         value={email}
         onChange={(event) => setEmail(event.target.value)}
+        required
+      />
+      <label htmlFor="invite">کد دعوت (دوره‌ی بتا فقط با کد دعوت باز می‌شود)</label>
+      <input
+        id="invite"
+        dir="ltr"
+        placeholder="RITMA-XXXXXXXX"
+        value={inviteCode}
+        onChange={(event) => setInviteCode(event.target.value)}
         required
       />
       <label htmlFor="password">گذرواژه (حداقل ۸ کاراکتر، حرف و عدد)</label>

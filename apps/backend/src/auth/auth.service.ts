@@ -3,6 +3,9 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { randomBytes, createHash } from 'node:crypto';
 
+import { AuditService } from '../audit/audit.service';
+import { BetaService } from '../beta/beta.service';
+import { DevicesService, type DeviceAttempt } from '../devices/devices.service';
 import { PrismaService } from '../prisma/prisma.service';
 import type { AuthedUser } from './guards/auth.guards';
 import type { LoginDto, RegisterDto } from './dto/auth.dto';
@@ -23,23 +26,70 @@ export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
+    private readonly beta: BetaService,
+    private readonly devices: DevicesService,
+    private readonly audit: AuditService,
   ) {}
 
-  async register(dto: RegisterDto): Promise<TokenPair & { user: AuthedUser }> {
+  async register(
+    dto: RegisterDto,
+    device?: DeviceAttempt,
+  ): Promise<TokenPair & { user: AuthedUser }> {
+    // Beta gates: seat capacity, invite validity, device limit.
+    await this.beta.assertRegistrationAllowed();
+    const invite = await this.beta.assertInviteUsable(dto.inviteCode);
+    await this.devices.assertDeviceAllowed('pending', device ?? { deviceKey: 'unknown' }, this.beta.devicesPerUser);
+
     const exists = await this.prisma.user.findUnique({ where: { email: dto.email } });
     if (exists) throw new ConflictException('این ایمیل قبلاً ثبت شده است');
     const passwordHash = await bcrypt.hash(dto.password, 10);
-    const user = await this.prisma.user.create({
-      data: { email: dto.email, passwordHash, name: dto.name },
+    const user = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.user.create({
+        data: { email: dto.email, passwordHash, name: dto.name },
+      });
+      await tx.invite.update({
+        where: { id: invite.id },
+        data: { usedByUserId: created.id, usedAt: new Date() },
+      });
+      // Move the pre-registered device row onto the real user.
+      if (device) {
+        await tx.deviceSession.updateMany({
+          where: { userId: 'pending', deviceKey: device.deviceKey },
+          data: { userId: created.id },
+        });
+      }
+      return created;
+    });
+    this.audit.log({
+      actorUserId: user.id,
+      actorEmail: user.email,
+      action: 'auth.register',
+      entityType: 'User',
+      entityId: user.id,
+      after: { inviteCode: invite.code, device: device?.deviceKey },
+      ip: device?.ip,
     });
     return { ...(await this.issueTokens(user.id, user.email, user.role)), user: { sub: user.id, email: user.email, role: user.role } };
   }
 
-  async login(dto: LoginDto): Promise<TokenPair & { user: AuthedUser }> {
+  async login(
+    dto: LoginDto,
+    device?: DeviceAttempt,
+  ): Promise<TokenPair & { user: AuthedUser }> {
     const user = await this.prisma.user.findUnique({ where: { email: dto.email } });
     if (!user || !(await bcrypt.compare(dto.password, user.passwordHash))) {
       throw new UnauthorizedException('ایمیل یا گذرواژه نادرست است');
     }
+    await this.devices.assertDeviceAllowed(user.id, device ?? { deviceKey: DevicesService.keyFor(undefined) }, this.beta.devicesPerUser);
+    this.audit.log({
+      actorUserId: user.id,
+      actorEmail: user.email,
+      action: 'auth.login',
+      entityType: 'User',
+      entityId: user.id,
+      after: { device: device?.deviceKey },
+      ip: device?.ip,
+    });
     return { ...(await this.issueTokens(user.id, user.email, user.role)), user: { sub: user.id, email: user.email, role: user.role } };
   }
 

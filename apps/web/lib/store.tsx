@@ -24,7 +24,7 @@ interface AuthState {
   user: AuthedUser | null;
   token: string | null;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, name: string, password: string) => Promise<void>;
+  register: (email: string, name: string, password: string, inviteCode: string) => Promise<void>;
   logout: () => void;
   refreshUser: () => Promise<void>;
 }
@@ -88,11 +88,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
   );
 
   const register = useCallback(
-    async (email: string, name: string, password: string) => {
+    async (email: string, name: string, password: string, inviteCode: string) => {
       const data = await api<{ accessToken: string; user: AuthedUser }>('auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, name, password }),
+        body: JSON.stringify({ email, name, password, inviteCode }),
       });
       persist(data.accessToken, data.user);
     },

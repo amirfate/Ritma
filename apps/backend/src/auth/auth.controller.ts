@@ -1,8 +1,10 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Ip, Post, Req, UseGuards } from '@nestjs/common';
+import type { Request } from 'express';
 
 import { CurrentUser } from './decorators/current-user.decorator';
 import { Public } from './decorators/public.decorator';
 import { LoginDto, RefreshDto, RegisterDto } from './dto/auth.dto';
+import { DevicesService } from '../devices/devices.service';
 import { JwtAuthGuard, type AuthedUser } from './guards/auth.guards';
 import { AuthService } from './auth.service';
 
@@ -11,18 +13,27 @@ import { AuthService } from './auth.service';
 export class AuthController {
   constructor(
     private readonly auth: AuthService,
+    private readonly devices: DevicesService,
   ) {}
+
+  private deviceInfo(req: Request, ip: string) {
+    return {
+      deviceKey: DevicesService.keyFor(req.headers['user-agent']),
+      deviceName: req.headers['user-agent']?.slice(0, 80),
+      ip,
+    };
+  }
 
   @Public()
   @Post('register')
-  register(@Body() dto: RegisterDto) {
-    return this.auth.register(dto);
+  register(@Body() dto: RegisterDto, @Req() req: Request, @Ip() ip: string) {
+    return this.auth.register(dto, this.deviceInfo(req, ip));
   }
 
   @Public()
   @Post('login')
-  login(@Body() dto: LoginDto) {
-    return this.auth.login(dto);
+  login(@Body() dto: LoginDto, @Req() req: Request, @Ip() ip: string) {
+    return this.auth.login(dto, this.deviceInfo(req, ip));
   }
 
   @Public()

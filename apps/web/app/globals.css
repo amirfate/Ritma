@@ -363,3 +363,15 @@ a {
     font-size: 30px;
   }
 }
+
+/* ---- admin dashboard ---- */
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin: 22px 0 34px; }
+.stat { background: var(--card, #1d1812); border: 1px solid #2c2519; border-radius: 12px; padding: 18px 20px; display: flex; flex-direction: column; gap: 4px; }
+.stat small { color: var(--muted); font-size: 13px; }
+.stat strong { font-size: 26px; color: var(--accent, #e2a93f); }
+.stat span { font-size: 12px; color: var(--muted); }
+.tbl { width: 100%; border-collapse: collapse; margin: 12px 0 34px; font-size: 14px; }
+.tbl th { text-align: right; color: var(--muted); font-weight: 600; padding: 10px 12px; border-bottom: 1px solid #2c2519; }
+.tbl td { padding: 10px 12px; border-bottom: 1px solid #221d14; }
+.muted { color: var(--muted); }
+.ellip { max-width: 260px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
