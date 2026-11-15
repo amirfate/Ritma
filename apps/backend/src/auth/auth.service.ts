@@ -38,8 +38,6 @@ export class AuthService {
     // Beta gates: seat capacity, invite validity, device limit.
     await this.beta.assertRegistrationAllowed();
     const invite = await this.beta.assertInviteUsable(dto.inviteCode);
-    await this.devices.assertDeviceAllowed('pending', device ?? { deviceKey: 'unknown' }, this.beta.devicesPerUser);
-
     const exists = await this.prisma.user.findUnique({ where: { email: dto.email } });
     if (exists) throw new ConflictException('این ایمیل قبلاً ثبت شده است');
     const passwordHash = await bcrypt.hash(dto.password, 10);
@@ -51,11 +49,16 @@ export class AuthService {
         where: { id: invite.id },
         data: { usedByUserId: created.id, usedAt: new Date() },
       });
-      // Move the pre-registered device row onto the real user.
+      // Register the first device inside the transaction, after the user
+      // exists — a 'pending' row would violate the FK to User.
       if (device) {
-        await tx.deviceSession.updateMany({
-          where: { userId: 'pending', deviceKey: device.deviceKey },
-          data: { userId: created.id },
+        await tx.deviceSession.create({
+          data: {
+            userId: created.id,
+            deviceKey: device.deviceKey,
+            deviceName: device.deviceName ?? null,
+            lastIp: device.ip ?? null,
+          },
         });
       }
       return created;
