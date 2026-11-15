@@ -76,8 +76,7 @@ async function main() {
       },
     });
   }
-  // Beta invites for the admin (phase 1)
-  const admin = await prisma.user.findUnique({ where: { email: 'amir@ritma.app' } });
+  // Beta invites for the admin (phase 1) — `admin` is already defined above
   if (admin) {
     for (const code of ['RITMA-DEMO001', 'RITMA-DEMO002', 'RITMA-DEMO003']) {
       await prisma.invite.upsert({
