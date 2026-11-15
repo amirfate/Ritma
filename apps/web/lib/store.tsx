@@ -272,6 +272,9 @@ export function AuthNav(): ReactElement | null {
   return (
     <>
       <span>{user.name}</span>
+      <a href="/account" className="btn">
+        حساب من
+      </a>
       {user.role === 'ADMIN' ? (
         <a href="/admin" className="btn">
           پنل مدیریت
