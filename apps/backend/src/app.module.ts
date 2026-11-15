@@ -13,7 +13,6 @@ import { HealthModule } from './health/health.module';
 import { PaymentsModule } from './payments/payments.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { StreamModule } from './streaming/stream.module';
-import { StreamController } from './streaming/stream.controller';
 
 @Module({
   imports: [
@@ -30,6 +29,5 @@ import { StreamController } from './streaming/stream.controller';
     StreamModule,
     HealthModule,
   ],
-  controllers: [StreamController],
 })
 export class AppModule {}
