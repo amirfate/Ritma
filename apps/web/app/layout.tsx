@@ -32,7 +32,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }):
               <nav className="topnav">
                 <a href="/albums">آلبوم‌ها</a>
                 <a href="/artists">هنرمندان</a>
-                <a href="/pricing">اشتراک</a>
               </nav>
               <AuthNav />
             </header>

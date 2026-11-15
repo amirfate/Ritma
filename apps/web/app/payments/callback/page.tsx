@@ -56,8 +56,8 @@ function CallbackInner(): ReactElement {
       <p style={{ color: 'var(--muted)' }}>
         تراکنش تکمیل نشد یا توسط شما لغو شد. می‌توانید دوباره تلاش کنید.
       </p>
-      <a href="/pricing" className="btn">
-        بازگشت به صفحه‌ی اشتراک
+      <a href="/" className="btn">
+        بازگشت به صفحه‌ی اصلی
       </a>
     </div>
   );
