@@ -1,9 +1,11 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 
+
 import { AdminModule } from './admin/admin.module';
 import { AuditModule } from './audit/audit.module';
 import { AuthModule } from './auth/auth.module';
+import { JwtAuthModule } from './auth/jwt-auth.module';
 import { BetaModule } from './beta/beta.module';
 import { DevicesModule } from './devices/devices.module';
 import { CatalogModule } from './catalog/catalog.module';
@@ -15,6 +17,7 @@ import { StreamController } from './streaming/stream.controller';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, cache: true }),
+    JwtAuthModule,
     PrismaModule,
     AdminModule,
     AuditModule,
