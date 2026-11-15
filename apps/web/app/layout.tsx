@@ -2,7 +2,8 @@ import type { Metadata } from 'next';
 import type { ReactElement } from 'react';
 import localFont from 'next/font/local';
 
-import { AuthProvider, AuthNav } from '../lib/store';
+import { AuthProvider } from '../lib/store';
+import { Topbar } from '../lib/topbar';
 import { PlayerBar, PlayerProvider } from '../lib/player';
 import './globals.css';
 
@@ -26,16 +27,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }):
       <body className={`${vazir.variable} ritma-body`}>
         <AuthProvider>
           <PlayerProvider>
-            <header className="topbar">
-              <a href="/" className="brand">
-                ریتما<span className="brand-dot">.</span>
-              </a>
-              <nav className="topnav">
-                <a href="/albums">آلبوم‌ها</a>
-                <a href="/artists">هنرمندان</a>
-              </nav>
-              <AuthNav />
-            </header>
+            <Topbar />
             <main className="page">{children}</main>
             <PlayerBar />
             <footer className="foot">ریتما — احترام به موسیقی</footer>
