@@ -375,3 +375,41 @@ a {
 .tbl td { padding: 10px 12px; border-bottom: 1px solid #221d14; }
 .muted { color: var(--muted); }
 .ellip { max-width: 260px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* admin track manager */
+.adm-form { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 12px 0 26px; }
+.adm-form input, .adm-form select {
+  background: var(--panel, #1d1812);
+  border: 1px solid #2c2519;
+  color: var(--fg, #f2ead8);
+  border-radius: 8px;
+  padding: 9px 12px;
+  font-size: 14px;
+  font-family: inherit;
+}
+.adm-form input:focus, .adm-form select:focus { outline: none; border-color: var(--accent, #e2a93f); }
+.adm-form input[type='checkbox'] { width: auto; accent-color: var(--accent, #e2a93f); }
+.adm-form .chk { display: flex; gap: 6px; align-items: center; font-size: 13px; color: var(--muted, #9a8f7a); }
+.keyrow { display: flex; gap: 6px; align-items: center; min-width: 220px; }
+.keyrow input {
+  flex: 1;
+  background: var(--panel, #1d1812);
+  border: 1px solid #2c2519;
+  color: var(--fg, #f2ead8);
+  border-radius: 6px;
+  padding: 6px 9px;
+  font-size: 12px;
+  font-family: inherit;
+}
+.keyrow input:focus { outline: none; border-color: var(--accent, #e2a93f); }
+.keyrow .btn { padding: 6px 10px; font-size: 12px; }
+.badge {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 11px;
+  background: rgba(226, 169, 63, 0.15);
+  color: var(--accent, #e2a93f);
+}
+.ellip { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

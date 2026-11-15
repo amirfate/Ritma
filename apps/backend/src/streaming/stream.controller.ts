@@ -1,24 +1,26 @@
-import { Controller, ForbiddenException, Get, Logger, Param, Req, UseGuards } from '@nestjs/common';
-import type { Request } from 'express';
+import { Controller, Get, Header, Param, Query, Req, Res } from '@nestjs/common';
+import type { Request, Response } from 'express';
 
-import { JwtAuthGuard } from '../auth/guards/auth.guards';
-import { validateStreamSignature } from './stream-sign';
+import { StreamService } from './stream.service';
 
+/**
+ * Public (signature-gated) audio endpoint. The <audio> tag cannot send an
+ * Authorization header, so access is granted via the signed stream-url
+ * returned by GET /tracks/:id/stream-url.
+ */
 @Controller('tracks')
 export class StreamController {
-  private readonly logger = new Logger(StreamController.name);
+  constructor(private readonly streamService: StreamService) {}
 
-  @UseGuards(JwtAuthGuard)
   @Get(':id/stream')
-  stream(@Param('id') id: string, @Req() req: Request): { error?: string } {
-    const exp = Number(req.query.exp);
-    const sig = String(req.query.sig ?? '');
-    if (!validateStreamSignature(id, exp, sig)) {
-      throw new ForbiddenException('امضای استریم نامعتبر است');
-    }
-    // In production the request is proxied to MinIO / the CDN with these
-    // validated parameters; in local dev we only confirm the signature.
-    this.logger.log(`stream authorized for track ${id}`);
-    return { error: 'audio source not configured' };
+  @Header('Accept-Ranges', 'bytes')
+  play(
+    @Param('id') id: string,
+    @Query('exp') exp: string,
+    @Query('sig') sig: string,
+    @Req() req: Request,
+    @Res() res: Response,
+  ): void {
+    void this.streamService.pipe(id, Number(exp), sig, req.headers.range, res);
   }
 }

@@ -12,6 +12,7 @@ import { CatalogModule } from './catalog/catalog.module';
 import { HealthModule } from './health/health.module';
 import { PaymentsModule } from './payments/payments.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { StreamModule } from './streaming/stream.module';
 import { StreamController } from './streaming/stream.controller';
 
 @Module({
@@ -26,6 +27,7 @@ import { StreamController } from './streaming/stream.controller';
     DevicesModule,
     PaymentsModule,
     CatalogModule,
+    StreamModule,
     HealthModule,
   ],
   controllers: [StreamController],

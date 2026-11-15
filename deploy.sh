@@ -29,6 +29,9 @@ cd "$REPO_DIR"
 BACKEND_DIR="$REPO_DIR/apps/backend"
 WEB_DIR="$REPO_DIR/apps/web"
 
+# local media storage for registered audio files (audioUrl keys are relative to this)
+mkdir -p "$REPO_DIR/media/audio"
+
 # 1) update source
 if [ -d .git ]; then
   OLD_HEAD="$(git rev-parse HEAD)"

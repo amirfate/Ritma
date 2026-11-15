@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import type { ReactElement } from 'react';
 
 import { loadSavedAuth, refreshAccessToken } from '../../lib/store';
+import { TrackManager } from './track-manager';
 
 interface BetaStatus {
   users: number;
@@ -209,6 +210,8 @@ export default function AdminPage(): ReactElement {
       ) : (
         <p className="muted">هنوز عملیاتی ثبت نشده است.</p>
       )}
+
+      <TrackManager />
     </>
   );
 }

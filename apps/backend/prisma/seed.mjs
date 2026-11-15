@@ -1,6 +1,5 @@
 // Ritma seed — idempotent demo data (development only)
 import { PrismaClient } from '@prisma/client';
-import { createHash } from 'node:crypto';
 import * as bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
@@ -50,7 +49,6 @@ async function main() {
     create: { slug: 'demo-album', title: 'آلبوم نمونه', artistId: artist.id },
   });
 
-  const trackHash = (n) => createHash('sha256').update(`demo-track-${n}`).digest('hex').slice(0, 12);
   const tracks = [
     { title: 'قطعه‌ی اول', position: 1, isPremium: false },
     { title: 'قطعه‌ی دوم', position: 2, isPremium: true },
@@ -72,7 +70,8 @@ async function main() {
         durationSec: 180 + index * 30,
         isPublished: true,
         isPremium: track.isPremium,
-        audioUrl: `demo://${trackHash(index)}.flac`,
+        // key relative to MEDIA_DIR — file is created by scripts/gen-demo-audio.sh
+        audioUrl: `audio/demo-${index}.m4a`,
       },
     });
   }
