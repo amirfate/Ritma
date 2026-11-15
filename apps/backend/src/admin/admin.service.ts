@@ -72,7 +72,9 @@ export class AdminService {
     if (exists) throw new BadRequestException('هنرمندی با این نام از قبل هست');
     const slug = `${dto.name.trim().toLowerCase().replace(/\s+/g, '-').slice(0, 50)}-${Math.random().toString(36).slice(2, 6)}`;
     const artist = await this.prisma.artist.create({
-      data: { name: dto.name, bio: dto.bio, imageUrl: dto.imageUrl, slug, ownerUserId: actor.sub },
+      // admin-created artists have no owner yet — one owner row per user
+      // (ownerUserId is @unique); claim happens later via the artist portal
+      data: { name: dto.name, bio: dto.bio, imageUrl: dto.imageUrl, slug },
     });
     this.audit.log({
       actorUserId: actor.sub,
