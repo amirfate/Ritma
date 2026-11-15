@@ -2,7 +2,8 @@ import type { Metadata } from 'next';
 import type { ReactElement } from 'react';
 import localFont from 'next/font/local';
 
-import { AuthNav, AuthProvider, PlayerBar, PlayerProvider } from '../lib/store';
+import { AuthProvider, AuthNav } from '../lib/store';
+import { PlayerBar, PlayerProvider } from '../lib/player';
 import './globals.css';
 
 const vazir = localFont({

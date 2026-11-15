@@ -1,6 +1,7 @@
 import type { ReactElement } from 'react';
 
 import { serverGet, type AlbumCard, type TrackRow } from '../../../lib/server-api';
+import { TrackList } from '../../../lib/player';
 
 interface ArtistDetail {
   id: string;
@@ -44,13 +45,7 @@ export default async function ArtistPage({
         <section className="sec">
           <h2>تک‌آهنگ‌ها</h2>
           <div className="card">
-            {artist.singles.map((track) => (
-              <div key={track.id} className="track-row">
-                <span className="t-name">{track.title}</span>
-                {track.isPremium && <span className="pill">ویژه</span>}
-              </div>
-            ))}
-          </div>
+            <TrackList tracks={artist.singles.map((t) => ({ id: t.id, title: t.title, artist: artist.name }))} />          </div>
         </section>
       )}
     </>
