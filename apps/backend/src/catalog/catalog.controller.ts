@@ -116,6 +116,7 @@ export class TracksController {
     return this.tracks.update(id, dto, req.user);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post(':id/plays')
   registerPlay(@Param('id') id: string, @Req() req: Request & { user?: AuthedUser }) {
     return this.tracks.registerPlay(id, req.user?.sub);

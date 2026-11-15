@@ -42,19 +42,102 @@ export class AdminService {
 
   /** Single overview payload for the admin dashboard home. */
   async overview() {
-    const [beta, users, tracks, paidOrders, activeDevices, revenue] = await Promise.all([
+    const [beta, users, tracks, paidOrders, activeDevices, revenue, payouts, walletSum] = await Promise.all([
       this.beta.status(),
       this.prisma.user.findMany({
         orderBy: { createdAt: 'desc' },
         take: 100,
-        select: { id: true, email: true, name: true, role: true, plan: true, createdAt: true },
+        select: { id: true, email: true, name: true, role: true, plan: true, walletBalanceIrR: true, createdAt: true },
       }),
       this.prisma.track.count(),
       this.prisma.order.count({ where: { status: 'PAID' } }),
       this.devices.listAllForAdmin(),
       this.prisma.order.aggregate({ where: { status: 'PAID' }, _sum: { amountIrR: true } }),
+      this.prisma.payout.findMany({
+        orderBy: { createdAt: 'desc' },
+        take: 100,
+        include: { artist: { select: { name: true, slug: true } } },
+      }),
+      this.prisma.user.aggregate({ _sum: { walletBalanceIrR: true } }),
     ]);
-    return { beta, users, tracks, paidOrders, activeDevices, revenueIrR: revenue._sum.amountIrR ?? 0 };
+    return {
+      beta,
+      users,
+      tracks,
+      paidOrders,
+      activeDevices,
+      revenueIrR: revenue._sum.amountIrR ?? 0,
+      payouts,
+      walletSumIrR: walletSum._sum.walletBalanceIrR ?? 0,
+    };
+  }
+
+  // ===== payouts (doc: manual settlement, min 100,000 IRR, admin decides) =====
+
+  listPayouts() {
+    return this.prisma.payout.findMany({
+      orderBy: { createdAt: 'desc' },
+      include: { artist: { select: { id: true, name: true, slug: true } } },
+    });
+  }
+
+  async decidePayout(id: string, decision: 'PAID' | 'REJECTED', user: { sub: string }) {
+    const payout = await this.prisma.payout.findUnique({ where: { id } });
+    if (!payout) throw new NotFoundException('درخواست تسویه یافت نشد');
+    if (payout.status !== 'PENDING') throw new BadRequestException('این درخواست قبلاً تعیین تکلیف شده است');
+    const updated = await this.prisma.payout.update({
+      where: { id },
+      data: { status: decision, decidedAt: new Date() },
+    });
+    this.audit.log({
+      actorUserId: user.sub,
+      action: 'admin.payout.decide',
+      entityType: 'Payout',
+      entityId: id,
+      before: { status: payout.status },
+      after: { status: decision, amountIrR: payout.amountIrR },
+    });
+    return updated;
+  }
+
+  async setPayoutTracking(id: string, tracking: string) {
+    const payout = await this.prisma.payout.findUnique({ where: { id } });
+    if (!payout) throw new NotFoundException('درخواست تسویه یافت نشد');
+    return this.prisma.payout.update({
+      where: { id },
+      data: { trackingCode: String(tracking ?? '').trim().slice(0, 60) || null },
+    });
+  }
+
+  // ===== per-artist shares (doc: default 90/10, override per artist, 0..100) =====
+
+  async setArtistShares(
+    id: string,
+    saleShare: number | null | undefined,
+    donationShare: number | null | undefined,
+    user: { sub: string },
+  ) {
+    const artist = await this.prisma.artist.findUnique({ where: { id } });
+    if (!artist) throw new NotFoundException('هنرمند یافت نشد');
+    const ok = (v: number | null | undefined) =>
+      v === null || v === undefined || (Number.isFinite(Number(v)) && Number(v) >= 0 && Number(v) <= 100);
+    if (!ok(saleShare) || !ok(donationShare)) {
+      throw new BadRequestException('درصد باید بین ۰ تا ۱۰۰ باشد');
+    }
+    const toVal = (v: number | null | undefined) => (v === null || v === undefined ? null : Math.round(Number(v)));
+    const updated = await this.prisma.artist.update({
+      where: { id },
+      data: { saleSharePercent: toVal(saleShare), donationSharePercent: toVal(donationShare) },
+    });
+    this.audit.log({
+      actorUserId: user.sub,
+      action: 'admin.artist.shares',
+      entityType: 'Artist',
+      entityId: id,
+      before: { sale: artist.saleSharePercent, donation: artist.donationSharePercent },
+      after: { sale: updated.saleSharePercent, donation: updated.donationSharePercent },
+    });
+    return { ok: true, saleSharePercent: updated.saleSharePercent, donationSharePercent: updated.donationSharePercent };
   }
 
   auditPage(page = 1, take = 50) {

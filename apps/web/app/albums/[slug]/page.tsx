@@ -31,7 +31,7 @@ export default async function AlbumPage({
       <div className="card" style={{ marginTop: 20 }}>
         {album.tracks.length === 0 && <p style={{ color: 'var(--muted)' }}>قطعه‌ای ندارد.</p>}
         <TrackList
-          tracks={album.tracks.map((t) => ({ id: t.id, title: t.title, artist: album.artist.name }))}
+          tracks={album.tracks.map((t) => ({ id: t.id, title: t.title, artist: album.artist.name, priceIrR: t.priceIrR }))}
         />
       </div>
     </>

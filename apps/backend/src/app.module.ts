@@ -13,6 +13,7 @@ import { HealthModule } from './health/health.module';
 import { PaymentsModule } from './payments/payments.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { StreamModule } from './streaming/stream.module';
+import { WalletModule } from './wallet/wallet.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { StreamModule } from './streaming/stream.module';
     PaymentsModule,
     CatalogModule,
     StreamModule,
+    WalletModule,
     HealthModule,
   ],
 })

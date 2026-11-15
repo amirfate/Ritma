@@ -16,6 +16,7 @@ export interface QueueItem {
   id: string;
   title: string;
   artist: string;
+  priceIrR?: number;
 }
 
 /* ---------- context ---------- */
@@ -120,7 +121,10 @@ export function PlayerProvider({ children }: { children: React.ReactNode }): Rea
         });
         audio.addEventListener('loadedmetadata', () => setDuration(audio.duration));
         audio.addEventListener('ended', () => {
-          void fetch(`/tracks/${item.id}/plays`, { method: 'POST' });
+          void fetch(`/tracks/${item.id}/plays`, {
+            headers: saved ? { Authorization: `Bearer ${saved.token}` } : undefined,
+            method: 'POST',
+          });
           // advance the queue
           setQueue((q) => {
             setIndex((i) => {
@@ -149,7 +153,10 @@ export function PlayerProvider({ children }: { children: React.ReactNode }): Rea
         }
         setPlaying(true);
         setNotice('');
-        void fetch(`/tracks/${item.id}/plays`, { method: 'POST' });
+        void fetch(`/tracks/${item.id}/plays`, {
+            headers: saved ? { Authorization: `Bearer ${saved.token}` } : undefined,
+            method: 'POST',
+          });
       } catch {
         // autoplay rejection or network failure
         setNotice('مرورگر اجازه‌ی پخش خودکار نداد — دوباره دکمه‌ی پخش را بزنید');
@@ -303,13 +310,42 @@ export function PlayerBar(): ReactElement | null {
   );
 }
 
-/* ---------- clickable track list ---------- */
+/* ---------- clickable track list with optional buy buttons ---------- */
 export function TrackList({ tracks }: { tracks: QueueItem[] }): ReactElement {
   const p = usePlayer();
+  const [owned, setOwned] = useState<Record<string, boolean>>({});
+  const [notice, setNotice] = useState<string | null>(null);
+
+  async function buy(t: QueueItem): Promise<void> {
+    const saved = loadSavedAuth();
+    if (!saved) {
+      setNotice('برای خرید ابتدا وارد شوید.');
+      return;
+    }
+    try {
+      const res = await fetch(`/api/tracks/${t.id}/purchase`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${saved.token}` },
+      });
+      const body = (await res.json()) as { ok?: boolean; paidFrom?: string; needGateway?: boolean; ref?: string; message?: string; already?: boolean; free?: boolean };
+      if (!res.ok) throw new Error(body.message ?? 'خطا در خرید');
+      if (body.needGateway && body.ref) {
+        window.location.href = `/pay/${body.ref}`;
+        return;
+      }
+      setOwned((o) => ({ ...o, [t.id]: true }));
+      setNotice(body.already ? 'این قطعه قبلاً در کتابخانه شماست.' : 'خرید انجام شد — قطعه به کتابخانه‌تان اضافه شد.');
+    } catch (e) {
+      setNotice(e instanceof Error ? e.message : 'خطای غیرمنتظره');
+    }
+  }
+
   return (
     <div className="track-list">
+      {notice && <p className="msg">{notice}</p>}
       {tracks.map((t, i) => {
         const current = p.trackId === t.id;
+        const sellable = (t.priceIrR ?? 0) > 0 && !owned[t.id];
         return (
           <button
             key={t.id}
@@ -326,6 +362,20 @@ export function TrackList({ tracks }: { tracks: QueueItem[] }): ReactElement {
             <span className="t-num">{i + 1}</span>
             <span className="t-name">{t.title}</span>
             {current ? <span className="pill-live">در حال پخش</span> : null}
+            {sellable ? (
+              <span
+                className="nbtn small primary"
+                style={{ marginLeft: 8 }}
+                role="button"
+                tabIndex={-1}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void buy(t);
+                }}
+              >
+                خرید {(t.priceIrR ?? 0) / 10 > 0 ? `${((t.priceIrR ?? 0) / 10).toLocaleString('fa-IR')} ت` : ''}
+              </span>
+            ) : null}
             <span className="t-play-hint">{current && p.playing ? '⏸' : '▶'}</span>
           </button>
         );

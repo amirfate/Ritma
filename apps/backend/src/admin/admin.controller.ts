@@ -71,4 +71,27 @@ export class AdminController {
   unpublishTrack(@CurrentUser() user: AuthedUser, @Param('id') id: string) {
     return this.admin.publishTrack(id, false, user);
   }
+
+  // ===== payouts / per-artist shares (ported from ritma-app) =====
+
+  @Get('payouts')
+  payouts() {
+    return this.admin.listPayouts();
+  }
+
+  @Post('payouts/:id/decide')
+  decidePayout(@CurrentUser() user: AuthedUser, @Param('id') id: string, @Body() dto: { decision: 'PAID' | 'REJECTED' }) {
+    const d = dto.decision === 'REJECTED' ? 'REJECTED' : 'PAID';
+    return this.admin.decidePayout(id, d, user);
+  }
+
+  @Post('payouts/:id/track')
+  payoutTracking(@Param('id') id: string, @Body() dto: { tracking?: string }) {
+    return this.admin.setPayoutTracking(id, String(dto.tracking ?? ''));
+  }
+
+  @Post('artists/:id/shares')
+  artistShares(@CurrentUser() user: AuthedUser, @Param('id') id: string, @Body() dto: { saleShare?: number | null; donationShare?: number | null }) {
+    return this.admin.setArtistShares(id, dto.saleShare, dto.donationShare, user);
+  }
 }

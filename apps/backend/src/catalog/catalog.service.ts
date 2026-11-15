@@ -2,6 +2,7 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException 
 
 import { PrismaService } from '../prisma/prisma.service';
 import { PaymentsService } from '../payments/payments.service';
+import { WalletService } from '../wallet/wallet.service';
 import { signStreamToken, STREAM_TTL_SECONDS } from '../streaming/stream-sign';
 
 function makeSlug(base: string): string {
@@ -14,6 +15,7 @@ export class ArtistsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly payments: PaymentsService,
+    private readonly wallet: WalletService,
   ) {}
 
   async list(q?: string, skip = 0, take = 20): Promise<unknown> {
@@ -102,6 +104,7 @@ export class TracksService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly payments: PaymentsService,
+    private readonly wallet: WalletService,
   ) {}
 
   async listPublic(albumSlug?: string, artistSlug?: string, q?: string, skip = 0, take = 20): Promise<unknown> {
@@ -177,7 +180,8 @@ export class TracksService {
     const track = await this.prisma.track.findUnique({ where: { id: trackId } });
     if (!track) throw new NotFoundException('ترک یافت نشد');
     if (track.isPremium && !(await this.payments.isPremium(user?.sub ?? null))) {
-      throw new ForbiddenException('برای پخش این اثر اشتراک ویژه لازم است');
+      const owned = await this.wallet.hasAccess(user?.sub ?? null, trackId);
+      if (!owned) throw new ForbiddenException('برای پخش این اثر اشتراک ویژه لازم است');
     }
     const exp = Math.floor(Date.now() / 1000) + STREAM_TTL_SECONDS;
     const url = `/tracks/${trackId}/stream?exp=${exp}&sig=${signStreamToken(trackId, exp)}`;

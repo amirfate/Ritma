@@ -75,6 +75,15 @@ export function Topbar(): ReactElement {
           <a href="/pricing" onClick={() => setNavOpen(false)}>
             خرید اشتراک
           </a>
+          <a href="/wallet" onClick={() => setNavOpen(false)}>
+            کیف پول
+          </a>
+          <a href="/library" onClick={() => setNavOpen(false)}>
+            کتابخانه
+          </a>
+          <a href="/artist" onClick={() => setNavOpen(false)}>
+            پنل هنرمند
+          </a>
         </nav>
         <AuthNav />
         <div ref={menuRef} style={{ position: 'relative', flex: 'none' }}>

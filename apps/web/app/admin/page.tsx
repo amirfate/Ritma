@@ -25,10 +25,12 @@ interface AuditRow {
 
 interface AdminOverview {
   beta: BetaStatus;
-  users: { id: string; email: string; name: string; role: string; plan: string; createdAt: string }[];
+  users: { id: string; email: string; name: string; role: string; plan: string; walletBalanceIrR: number; createdAt: string }[];
   tracks: number;
   paidOrders: number;
   revenueIrR: number;
+  walletSumIrR: number;
+  payouts: { id: string; amountIrR: number; status: string; trackingCode: string | null; createdAt: string; artist: { name: string; slug: string } }[];
   activeDevices: {
     id: string;
     deviceName: string | null;
@@ -55,6 +57,17 @@ export default function AdminPage(): ReactElement {
   const [data, setData] = useState<AdminOverview | null>(null);
   const [audit, setAudit] = useState<AuditRow[] | null>(null);
   const [state, setState] = useState<'loading' | 'denied' | 'ready' | 'error'>('loading');
+
+  async function decide(id: string, decision: 'PAID' | 'REJECTED'): Promise<void> {
+    const saved = loadSavedAuth();
+    if (!saved) return;
+    await fetch(`/api/admin/payouts/${id}/decide`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${saved.token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ decision }),
+    });
+    window.location.reload();
+  }
 
   useEffect(() => {
     async function load(): Promise<void> {
@@ -211,7 +224,87 @@ export default function AdminPage(): ReactElement {
         <p className="muted">هنوز عملیاتی ثبت نشده است.</p>
       )}
 
+      <section className="sec">
+        <h2>درخواست‌های تسویه</h2>
+        <p className="muted">موجودی کل کیف پول کاربران: {toman(data.walletSumIrR)} تومان</p>
+        {data.payouts.length > 0 ? (
+          <table className="tbl">
+            <thead>
+              <tr>
+                <th>هنرمند</th>
+                <th>مبلغ (تومان)</th>
+                <th>وضعیت</th>
+                <th>کد رهگیری</th>
+                <th>عملیات</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.payouts.map((p) => (
+                <tr key={p.id}>
+                  <td>{p.artist.name}</td>
+                  <td>{toman(p.amountIrR)}</td>
+                  <td>{p.status === 'PENDING' ? 'در انتظار' : p.status === 'PAID' ? 'پرداخت شد' : 'رد شد'}</td>
+                  <td dir="ltr">{p.trackingCode ?? '—'}</td>
+                  <td>
+                    {p.status === 'PENDING' && (
+                      <span style={{ display: 'inline-flex', gap: 6 }}>
+                        <button className="nbtn small primary" type="button" onClick={() => void decide(p.id, 'PAID')}>
+                          پرداخت شد
+                        </button>
+                        <button className="nbtn small" type="button" onClick={() => void decide(p.id, 'REJECTED')}>
+                          رد
+                        </button>
+                      </span>
+                    )}
+                    {p.status === 'PAID' && <TrackingInput payoutId={p.id} initial={p.trackingCode ?? ''} />}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <p className="muted">درخواست تسویه‌ای ثبت نشده است.</p>
+        )}
+      </section>
+
       <TrackManager />
     </>
+  );
+}
+
+function TrackingInput({ payoutId, initial }: { payoutId: string; initial: string }): ReactElement {
+  const [val, setVal] = useState(initial);
+  const [saved, setSaved] = useState(false);
+  return (
+    <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
+      <input
+        className="inp"
+        style={{ maxWidth: 140 }}
+        value={val}
+        placeholder="کد رهگیری"
+        onChange={(e) => {
+          setVal(e.target.value);
+          setSaved(false);
+        }}
+      />
+      <button
+        className="nbtn small"
+        type="button"
+        onClick={() => {
+          void (async () => {
+            const saved = loadSavedAuth();
+            if (!saved) return;
+            await fetch(`/api/admin/payouts/${payoutId}/track`, {
+              method: 'POST',
+              headers: { Authorization: `Bearer ${saved.token}`, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ tracking: val }),
+            });
+            setSaved(true);
+          })();
+        }}
+      >
+        {saved ? '✓' : 'ثبت'}
+      </button>
+    </span>
   );
 }

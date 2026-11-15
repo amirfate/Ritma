@@ -20,21 +20,27 @@ enum UserPlan {
 }
 
 model User {
-  id            String         @id @default(cuid())
-  email         String         @unique
-  passwordHash  String
-  name          String
-  role          Role           @default(USER)
-  plan          UserPlan       @default(FREE)
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  id             String          @id @default(cuid())
+  email          String          @unique
+  passwordHash   String
+  name           String
+  role           Role            @default(USER)
+  plan           UserPlan        @default(FREE)
+  walletBalanceIrR Int            @default(0)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
   refreshTokens  RefreshToken[]
   deviceSessions DeviceSession[]
   invitesSent    Invite[]        @relation("InviteInviter")
   inviteUsed     Invite?         @relation("InviteUsed")
   artist         Artist?
-  orders        Order[]
-  subscriptions Subscription[]
+  orders         Order[]
+  subscriptions  Subscription[]
+  walletTx       WalletTx[]
+  payRefs        PayRef[]
+  trackPurchases TrackPurchase[]
+  follows        Follow[]
+  donations      Donation[]
 }
 
 model RefreshToken {
@@ -50,18 +56,25 @@ model RefreshToken {
 }
 
 model Artist {
-  id          String   @id @default(cuid())
-  slug        String   @unique
-  name        String
-  bio         String?
-  imageUrl    String?
-  ownerUserId String?  @unique
-  owner       User?    @relation(fields: [ownerUserId], references: [id])
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                   String   @id @default(cuid())
+  slug                 String   @unique
+  name                 String
+  bio                  String?
+  imageUrl             String?
+  ownerUserId          String?  @unique
+  owner                User?    @relation(fields: [ownerUserId], references: [id])
+  saleSharePercent     Int? // null = default 90 (artist share %) — per doc, per-artist
+  donationSharePercent Int? // null = default 90
+  earnedIrR            Int      @default(0)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 
-  albums Album[]
-  tracks Track[]
+  albums    Album[]
+  tracks    Track[]
+  follows   Follow[]
+  donations Donation[]
+  ledger    ArtistLedger[]
+  payouts   Payout[]
 }
 
 model Album {
@@ -81,28 +94,29 @@ model Album {
 }
 
 model Track {
-  id            String      @id @default(cuid())
+  id            String    @id @default(cuid())
   artistId      String
-  artist        Artist      @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  artist        Artist    @relation(fields: [artistId], references: [id], onDelete: Cascade)
   albumId       String?
-  album         Album?      @relation(fields: [albumId], references: [id])
+  album         Album?    @relation(fields: [albumId], references: [id])
   title         String
   audioUrl      String?
-  durationSec   Int         @default(0)
-  position      Int         @default(0)
+  durationSec   Int       @default(0)
+  position      Int       @default(0)
   coverUrl      String?
   lyrics        String?
   syncedContent String?
-  isPremium     Boolean     @default(false)
-  isSellable    Boolean     @default(false)
-  priceIrR      Int         @default(0)
-  isPublished   Boolean     @default(false)
-  playCount     Int         @default(0)
+  isPremium     Boolean   @default(false)
+  isSellable    Boolean   @default(false)
+  priceIrR      Int       @default(0)
+  isPublished   Boolean   @default(false)
+  playCount     Int       @default(0)
   releaseDate   DateTime?
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   playEvents PlayEvent[]
+  purchases  TrackPurchase[]
 
   @@index([artistId])
   @@index([albumId])
@@ -136,15 +150,15 @@ model Plan {
 }
 
 model Order {
-  id        String        @id @default(cuid())
+  id        String      @id @default(cuid())
   userId    String
-  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   planId    String
-  plan      Plan          @relation(fields: [planId], references: [id])
-  status    OrderStatus   @default(PENDING)
+  plan      Plan        @relation(fields: [planId], references: [id])
+  status    OrderStatus @default(PENDING)
   amountIrR Int
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
 
   payments PaymentEvent[]
 }
@@ -204,7 +218,7 @@ model DeviceSession {
   id         String   @id @default(cuid())
   userId     String
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  deviceKey  String   // sha256 of UA + client hint — never store raw UA of others
+  deviceKey  String // sha256 of UA + client hint — never store raw UA of others
   deviceName String?
   lastIp     String?
   lastSeenAt DateTime @default(now())
@@ -217,18 +231,118 @@ model DeviceSession {
 
 /// Append-only log of sensitive operations (admin dashboard section 18).
 model AuditLog {
-  id           String   @id @default(cuid())
-  actorUserId  String?
-  actorEmail   String?
-  action       String   // e.g. auth.register, catalog.track.create, payments.order.paid
-  entityType   String
-  entityId     String?
-  before       Json?
-  after        Json?
-  ip           String?
-  createdAt    DateTime @default(now())
+  id          String   @id @default(cuid())
+  actorUserId String?
+  actorEmail  String?
+  action      String // e.g. auth.register, catalog.track.create, payments.order.paid
+  entityType  String
+  entityId    String?
+  before      Json?
+  after       Json?
+  ip          String?
+  createdAt   DateTime @default(now())
 
   @@index([entityType, entityId])
   @@index([actorUserId])
   @@index([createdAt])
+}
+
+// ===== ported from ritma-app (wallet / purchase / donation / follow / payout) =====
+/// Running wallet ledger for a user. amount in Rial (+credit / -debit).
+model WalletTx {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amountIrR Int // + credit / - debit
+  kind      String // CHARGE | PURCHASE | DONATION
+  ref       String?
+  status    String   @default("DONE") // DONE | PENDING | CANCELED
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+/// One pending payment intention (charge | purchase | donation), settled on confirm.
+model PayRef {
+  id        String   @id @default(cuid())
+  ref       String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind      String // charge | purchase | donation
+  amountIrR Int
+  payload   Json     @default("{}")
+  status    String   @default("PENDING") // PENDING | PAID | CANCELED
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+/// Ownership of a purchased track (price > 0).
+model TrackPurchase {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trackId   String
+  track     Track    @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  priceIrR  Int
+  createdAt DateTime @default(now())
+
+  @@unique([userId, trackId])
+  @@index([userId])
+}
+
+model Follow {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  artistId  String
+  artist    Artist   @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, artistId])
+  @@index([artistId])
+}
+
+model Donation {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  artistId    String
+  artist      Artist   @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  amountIrR   Int
+  isAnonymous Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([artistId])
+  @@index([userId])
+}
+
+/// Append-only artist earnings ledger: SALE | DONATION rows.
+model ArtistLedger {
+  id          String   @id @default(cuid())
+  artistId    String
+  artist      Artist   @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  kind        String // SALE | DONATION
+  amountGross Int
+  platformFee Int
+  amountNet   Int
+  ref         String?
+  note        String?
+  createdAt   DateTime @default(now())
+
+  @@index([artistId])
+}
+
+/// Manual payout requests (doc: min 100,000 IRR, admin decides PENDING->PAID/REJECTED).
+model Payout {
+  id           String    @id @default(cuid())
+  artistId     String
+  artist       Artist    @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  amountIrR    Int
+  status       String    @default("PENDING") // PENDING | PAID | REJECTED
+  trackingCode String?
+  decidedAt    DateTime?
+  createdAt    DateTime  @default(now())
+
+  @@index([artistId])
 }
