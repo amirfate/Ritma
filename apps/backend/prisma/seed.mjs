@@ -5,7 +5,7 @@ import * as bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
-async function main(): Promise<void> {
+async function main() {
   const adminHash = await bcrypt.hash('Passw0rd!123', 10);
   const admin = await prisma.user.upsert({
     where: { email: 'amir@ritma.app' },
@@ -50,7 +50,7 @@ async function main(): Promise<void> {
     create: { slug: 'demo-album', title: 'آلبوم نمونه', artistId: artist.id },
   });
 
-  const trackHash = (n: number) => createHash('sha256').update(`demo-track-${n}`).digest('hex').slice(0, 12);
+  const trackHash = (n) => createHash('sha256').update(`demo-track-${n}`).digest('hex').slice(0, 12);
   const tracks = [
     { title: 'قطعه‌ی اول', position: 1, isPremium: false },
     { title: 'قطعه‌ی دوم', position: 2, isPremium: true },
