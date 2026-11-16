@@ -1030,3 +1030,19 @@ table.tbl td {
   box-shadow:inset 5px 5px 12px var(--shadow-dark),inset -5px -5px 12px var(--shadow-light)}
 .plcard b{font-size:14px}
 .plcard .sub{font-size:12px;color:var(--muted);margin-top:4px}
+
+/* ---- legacy v3.4 details: tag / stat / tabs / auth ---- */
+.tag{font-size:12px;padding:3px 12px;border-radius:999px;display:inline-block;
+  box-shadow:inset 3px 3px 6px var(--shadow-dark),inset -3px -3px 6px var(--shadow-light)}
+.tag.red{color:var(--accent)} .tag.green{color:var(--ok)}
+.stat .v{font-size:24px;font-weight:800}
+.stat .l{font-size:12px;color:var(--muted)}
+.tabs{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap}
+.tab{padding:9px 20px;border-radius:999px;cursor:pointer;font-size:14px;color:var(--muted);
+  box-shadow:5px 5px 10px var(--shadow-dark),-5px -5px 10px var(--shadow-light);border:none;background:var(--bg);font-family:inherit}
+.tab.active{color:var(--accent);box-shadow:inset 4px 4px 8px var(--shadow-dark),inset -4px -4px 8px var(--shadow-light)}
+.authwrap{min-height:calc(100vh - 120px);display:flex;align-items:center;justify-content:center;padding:30px 16px}
+.authbox{width:100%;max-width:400px;padding:34px}
+.authbox h1{text-align:center;margin-bottom:24px}
+.authbox .btn{width:100%;margin-top:8px}
+.authbox .hint{text-align:center}

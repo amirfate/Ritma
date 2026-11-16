@@ -26,7 +26,8 @@ export default function LoginPage(): ReactElement {
   }
 
   return (
-    <form className="form" onSubmit={(event) => void onSubmit(event)}>
+    <div className="authwrap">
+      <form className="neu authbox form" onSubmit={(event) => void onSubmit(event)}>
       <h1>ورود به ریتما</h1>
       <label htmlFor="email">ایمیل</label>
       <input
@@ -54,5 +55,6 @@ export default function LoginPage(): ReactElement {
         حساب نداری؟ <a href="/register" style={{ color: 'var(--accent)' }}>ثبت‌نام</a>
       </div>
     </form>
+    </div>
   );
 }

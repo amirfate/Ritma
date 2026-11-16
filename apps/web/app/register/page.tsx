@@ -28,7 +28,8 @@ export default function RegisterPage(): ReactElement {
   }
 
   return (
-    <form className="form" onSubmit={(event) => void onSubmit(event)}>
+    <div className="authwrap">
+      <form className="neu authbox form" onSubmit={(event) => void onSubmit(event)}>
       <h1>ساخت حساب ریتما</h1>
       <label htmlFor="name">نام نمایشی</label>
       <input
@@ -74,5 +75,6 @@ export default function RegisterPage(): ReactElement {
         حساب داری؟ <a href="/login" style={{ color: 'var(--accent)' }}>ورود</a>
       </div>
     </form>
+    </div>
   );
 }
