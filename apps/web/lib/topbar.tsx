@@ -81,6 +81,9 @@ export function Topbar(): ReactElement {
           <a href="/library" onClick={() => setNavOpen(false)}>
             کتابخانه
           </a>
+          <a href="/devices" onClick={() => setNavOpen(false)}>
+            دستگاه‌ها
+          </a>
           <a href="/artist" onClick={() => setNavOpen(false)}>
             پنل هنرمند
           </a>
