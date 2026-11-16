@@ -104,20 +104,20 @@ export default function ArtistPanelPage(): ReactElement {
 
   return (
     <>
-      <h1>پنل هنرمند — {data.artist.name}</h1>
+      <h2 className="sec">پنل هنرمند — {data.artist.name}</h2>
       <p className="muted">
         سهم فروش: {data.share_percent}٪ — سهم حمایت مالی: {data.donation_share_percent}٪
       </p>
       <div className="stat-grid">
-        <div className="stat"><b>{toman(data.earned_total)}</b><span>کل درآمد (تومان)</span></div>
-        <div className="stat"><b>{toman(data.withdrawable)}</b><span>قابل تسویه</span></div>
-        <div className="stat"><b>{toman(data.pending_payout)}</b><span>در انتظار تسویه</span></div>
-        <div className="stat"><b>{data.sales.count.toLocaleString('fa-IR')}</b><span>فروش</span></div>
+        <div className="neu stat"><b>{toman(data.earned_total)}</b><span>کل درآمد (تومان)</span></div>
+        <div className="neu stat"><b>{toman(data.withdrawable)}</b><span>قابل تسویه</span></div>
+        <div className="neu stat"><b>{toman(data.pending_payout)}</b><span>در انتظار تسویه</span></div>
+        <div className="neu stat"><b>{data.sales.count.toLocaleString('fa-IR')}</b><span>فروش</span></div>
       </div>
 
       <section className="sec">
         <h2>درخواست تسویه</h2>
-        <div className="card">
+        <div className="neu card">
           <p style={{ color: 'var(--muted)' }}>مبلغ به تومان — حداقل ۱۰,۰۰۰ تومان</p>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             <input className="inp" style={{ maxWidth: 200 }} value={amountToman} onChange={(e) => setAmountToman(e.target.value)} inputMode="numeric" />

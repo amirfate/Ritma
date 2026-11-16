@@ -80,7 +80,7 @@ export default function LibraryPage(): ReactElement {
         <>
           <h2>خریداری‌شده</h2>
           {paid && paid.length > 0 ? (
-            <div className="card">
+            <div className="neu card">
               {paid.map((t) => (
                 <a key={t.id} href={`/albums`} className="track-row clickable">
                   <span className="t-name">{t.title}</span>
@@ -95,7 +95,7 @@ export default function LibraryPage(): ReactElement {
           )}
           <h2 style={{ marginTop: 20 }}>رایگان برای پخش</h2>
           {free && free.length > 0 ? (
-            <div className="card">
+            <div className="neu card">
               {free.map((t) => (
                 <a key={t.id} href="/albums" className="track-row clickable">
                   <span className="t-name">{t.title}</span>
@@ -117,7 +117,7 @@ export default function LibraryPage(): ReactElement {
           {follows && follows.length > 0 ? (
             <div className="grid c3">
               {follows.map((f) => (
-                <a key={f.artist.id} href={`/artists/${f.artist.slug}`} className="card">
+                <a key={f.artist.id} href={`/artists/${f.artist.slug}`} className="neu card">
                   <h3>{f.artist.name}</h3>
                   <p className="muted">{f.artist._count.tracks} قطعه</p>
                 </a>
@@ -159,7 +159,7 @@ export default function LibraryPage(): ReactElement {
 
   return (
     <>
-      <h1>کتابخانه من</h1>
+      <h2 className="sec">موسیقی‌های من</h2>
       <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
         {(
           [

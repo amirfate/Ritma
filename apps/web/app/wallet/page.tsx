@@ -91,9 +91,9 @@ export default function WalletPage(): ReactElement {
 
   return (
     <>
-      <h1>کیف پول</h1>
+      <h2 className="sec">کیف پول</h2>
       <div className="stat-grid">
-        <div className="stat">
+        <div className="neu stat">
           <b>{balance !== null ? toman(balance) : '—'}</b>
           <span>تومان موجودی</span>
         </div>
@@ -101,7 +101,7 @@ export default function WalletPage(): ReactElement {
 
       <section className="sec">
         <h2>شارژ کیف پول</h2>
-        <div className="card">
+        <div className="neu card">
           <p style={{ color: 'var(--muted)' }}>مبلغ به تومان — حداقل ۱۰,۰۰۰ تومان</p>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             <input
@@ -122,6 +122,7 @@ export default function WalletPage(): ReactElement {
       <section className="sec">
         <h2>تراکنش‌ها</h2>
         {tx && tx.length > 0 ? (
+          <div className="neu card" style={{ padding: 0 }}>
           <table className="tbl">
             <thead>
               <tr>
@@ -145,6 +146,7 @@ export default function WalletPage(): ReactElement {
               ))}
             </tbody>
           </table>
+          </div>
         ) : (
           <p style={{ color: 'var(--muted)' }}>هنوز تراکنشی ندارید.</p>
         )}
