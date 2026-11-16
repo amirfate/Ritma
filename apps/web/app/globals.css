@@ -1046,3 +1046,7 @@ table.tbl td {
 .authbox h1{text-align:center;margin-bottom:24px}
 .authbox .btn{width:100%;margin-top:8px}
 .authbox .hint{text-align:center}
+
+/* ---- buybox in player stage (legacy) ---- */
+.buybox{padding:16px 20px;border-radius:22px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:14px}
+.buybox .btn{white-space:nowrap}

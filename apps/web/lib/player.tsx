@@ -53,6 +53,12 @@ interface PlayerState {
   cycleRate: () => void;
   repeat: boolean;
   toggleRepeat: () => void;
+  /* buy + share (legacy stageBuy/stageShare) */
+  priceIrR: number;
+  owned: Record<string, boolean>;
+  markOwned: (id: string) => void;
+  buy: (id: string) => Promise<void>;
+  share: () => void;
 }
 
 const PlayerCtx = createContext<PlayerState | null>(null);
@@ -79,6 +85,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }): Rea
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [notice, setNotice] = useState('');
+  const [owned, setOwned] = useState<Record<string, boolean>>({});
 
   const [stageOpen, setStageOpen] = useState(false);
   const [volume, setVolumeState] = useState(1);
@@ -311,11 +318,69 @@ export function PlayerProvider({ children }: { children: React.ReactNode }): Rea
     applyAudioSettings();
   }, [applyAudioSettings]);
 
+  const markOwned = useCallback((id: string) => {
+    setOwned((o) => (o[id] ? o : { ...o, [id]: true }));
+  }, []);
+
+  const buy = useCallback(
+    async (id: string) => {
+      const saved = loadSavedAuth();
+      if (!saved) {
+        setNotice('برای خرید ابتدا وارد شوید.');
+        return;
+      }
+      try {
+        const res = await fetch(`/api/tracks/${id}/purchase`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${saved.token}` },
+        });
+        const body = (await res.json()) as {
+          ok?: boolean;
+          needGateway?: boolean;
+          ref?: string;
+          message?: string;
+          already?: boolean;
+          free?: boolean;
+        };
+        if (!res.ok) throw new Error(body.message ?? 'خطا در خرید');
+        if (body.needGateway && body.ref) {
+          window.location.href = `/pay/${body.ref}`;
+          return;
+        }
+        markOwned(id);
+        setNotice(body.already ? 'این قطعه قبلاً در کتابخانه شماست.' : 'خرید انجام شد — قطعه به کتابخانه‌تان اضافه شد.');
+      } catch (e) {
+        setNotice(e instanceof Error ? e.message : 'خطای غیرمنتظره');
+      }
+    },
+    [markOwned],
+  );
+
+  const share = useCallback(() => {
+    const t = queue[index];
+    if (!t) return;
+    const url = `${window.location.origin}/?track=${t.id}`;
+    const data = { title: `${t.title} — ${t.artist}`, url };
+    void (async () => {
+      try {
+        if (navigator.share) {
+          await navigator.share(data);
+          return;
+        }
+        await navigator.clipboard.writeText(url);
+        setNotice('لینک ترک کپی شد');
+      } catch {
+        /* کاربر انصراف داد */
+      }
+    })();
+  }, [queue, index]);
+
   const value = useMemo<PlayerState>(
     () => ({
       trackId: queue[index]?.id ?? null,
       title: queue[index]?.title ?? '',
       artist: queue[index]?.artist ?? '',
+      priceIrR: queue[index]?.priceIrR ?? 0,
       syncedText: queue[index]?.syncedContent ?? null,
       plainLyrics: queue[index]?.lyrics ?? null,
       playing,
@@ -341,8 +406,12 @@ export function PlayerProvider({ children }: { children: React.ReactNode }): Rea
       cycleRate,
       repeat,
       toggleRepeat,
+      owned,
+      markOwned,
+      buy,
+      share,
     }),
-    [queue, index, playing, progress, currentTime, duration, notice, playQueue, playSingle, toggle, next, prev, seek, stop, stageOpen, openStage, closeStage, volume, setVolume, muted, toggleMute, rate, cycleRate, repeat, toggleRepeat],
+    [queue, index, playing, progress, currentTime, duration, notice, owned, markOwned, buy, share, playQueue, playSingle, toggle, next, prev, seek, stop, stageOpen, openStage, closeStage, volume, setVolume, muted, toggleMute, rate, cycleRate, repeat, toggleRepeat],
   );
 
   return <PlayerCtx.Provider value={value}>{children}</PlayerCtx.Provider>;
@@ -388,6 +457,9 @@ export function PlayerBar(): ReactElement | null {
         />
         <span className="pb-time" dir="ltr">{fmt(p.duration)}</span>
       </div>
+      <button type="button" className="pb-share nbtn small" onClick={p.share} aria-label="اشتراک‌گذاری" title="اشتراک‌گذاری">
+        ⤴
+      </button>
       <button type="button" className="pb-expand nbtn small" onClick={p.openStage} aria-label="پلیر تمام‌صفحه">
         ⛶
       </button>
@@ -401,36 +473,11 @@ export function PlayerBar(): ReactElement | null {
 /* ---------- clickable track list with optional buy buttons ---------- */
 export function TrackList({ tracks }: { tracks: QueueItem[] }): ReactElement {
   const p = usePlayer();
-  const [owned, setOwned] = useState<Record<string, boolean>>({});
-  const [notice, setNotice] = useState<string | null>(null);
-
-  async function buy(t: QueueItem): Promise<void> {
-    const saved = loadSavedAuth();
-    if (!saved) {
-      setNotice('برای خرید ابتدا وارد شوید.');
-      return;
-    }
-    try {
-      const res = await fetch(`/api/tracks/${t.id}/purchase`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${saved.token}` },
-      });
-      const body = (await res.json()) as { ok?: boolean; paidFrom?: string; needGateway?: boolean; ref?: string; message?: string; already?: boolean; free?: boolean };
-      if (!res.ok) throw new Error(body.message ?? 'خطا در خرید');
-      if (body.needGateway && body.ref) {
-        window.location.href = `/pay/${body.ref}`;
-        return;
-      }
-      setOwned((o) => ({ ...o, [t.id]: true }));
-      setNotice(body.already ? 'این قطعه قبلاً در کتابخانه شماست.' : 'خرید انجام شد — قطعه به کتابخانه‌تان اضافه شد.');
-    } catch (e) {
-      setNotice(e instanceof Error ? e.message : 'خطای غیرمنتظره');
-    }
-  }
+  const owned = p.owned;
 
   return (
     <div className="track-list">
-      {notice && <p className="msg">{notice}</p>}
+      {p.notice && <p className="msg">{p.notice}</p>}
       {tracks.map((t, i) => {
         const current = p.trackId === t.id;
         const sellable = (t.priceIrR ?? 0) > 0 && !owned[t.id];
@@ -458,7 +505,7 @@ export function TrackList({ tracks }: { tracks: QueueItem[] }): ReactElement {
                 tabIndex={-1}
                 onClick={(e) => {
                   e.stopPropagation();
-                  void buy(t);
+                  void p.buy(t.id);
                 }}
               >
                 خرید {(t.priceIrR ?? 0) / 10 > 0 ? `${((t.priceIrR ?? 0) / 10).toLocaleString('fa-IR')} ت` : ''}
@@ -600,6 +647,9 @@ export function PlayerStage(): ReactElement | null {
               >
                 {p.rate}x
               </button>
+              <button type="button" className="nbtn" onClick={p.share} aria-label="اشتراک‌گذاری" title="اشتراک‌گذاری">
+                ⤴
+              </button>
             </div>
             <div className="vrow">
               <button type="button" className="nbtn small" onClick={p.toggleMute} aria-label="بی‌صدا">
@@ -633,6 +683,16 @@ export function PlayerStage(): ReactElement | null {
               {fmt(p.currentTime)} / {fmt(p.duration)}
             </span>
           </div>
+          {(p.priceIrR ?? 0) > 0 && !p.owned[p.trackId ?? ''] ? (
+            <div className="neu-in buybox">
+              <span>
+                این ترک خریداری نشده — قیمت: <b className="num">{((p.priceIrR ?? 0) / 10).toLocaleString('fa-IR')} تومان</b>
+              </span>
+              <button type="button" className="btn solid" onClick={() => void p.buy(p.trackId ?? '')}>
+                خرید و پخش
+              </button>
+            </div>
+          ) : null}
         </div>
         <div className="vinyl">
           <div className="vring" style={{ ['--p' as string]: `${p.progress * 100}%` }} />
