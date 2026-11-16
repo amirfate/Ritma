@@ -36,6 +36,7 @@ export interface TrackRow {
   isSellable: boolean;
   priceIrR: number;
   syncedContent: string | null;
+  lyrics?: string | null;
   artist: { slug: string; name: string };
   album: { slug: string; title: string } | null;
 }

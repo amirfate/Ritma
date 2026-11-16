@@ -1,8 +1,23 @@
 // Ritma seed — idempotent demo data (development only)
-import { PrismaClient } from '@prisma/client';
+import pkg from '@prisma/client';
+const { PrismaClient } = pkg;
 import * as bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
+
+const DEMO_LYRICS = [
+  '[00:01] شب که می‌آید، خیالم راحت است',
+  '[00:05] نغمه‌ی تو در گوشه‌ی این خانه می‌ماند',
+  '[00:10] ریتم قلبم با صدای تو یکی است',
+  '[00:15] ریتما — اینجا خانه‌ی موسیقی است',
+].join('\n');
+
+const DEMO_LYRICS2 = [
+  'باده‌ی عشق در جام ما جاری است',
+  'نغمه‌ای از دور می‌آید',
+  'هر کس که شنود، دلش می‌لرزد',
+  'ریتما — احترام به موسیقی',
+].join('\n');
 
 async function main() {
   const adminHash = await bcrypt.hash('Passw0rd!123', 10);
@@ -72,6 +87,8 @@ async function main() {
         isPremium: track.isPremium,
         // key relative to MEDIA_DIR — file is created by scripts/gen-demo-audio.sh
         audioUrl: `audio/demo-${index}.m4a`,
+        lyrics: index === 1 ? DEMO_LYRICS : index === 2 ? DEMO_LYRICS2 : null,
+        syncedContent: index === 1 ? DEMO_LYRICS : null,
       },
     });
   }

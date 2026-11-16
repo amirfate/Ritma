@@ -47,7 +47,16 @@ export default async function ArtistPage({
         <section className="sec">
           <h2>تک‌آهنگ‌ها</h2>
           <div className="card">
-            <TrackList tracks={artist.singles.map((t) => ({ id: t.id, title: t.title, artist: artist.name, priceIrR: t.priceIrR }))} />          </div>
+            <TrackList
+              tracks={artist.singles.map((t) => ({
+                id: t.id,
+                title: t.title,
+                artist: artist.name,
+                priceIrR: t.priceIrR,
+                lyrics: t.lyrics,
+                syncedContent: t.syncedContent,
+              }))}
+            />          </div>
         </section>
       )}
     </>

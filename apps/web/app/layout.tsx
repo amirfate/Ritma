@@ -4,7 +4,7 @@ import localFont from 'next/font/local';
 
 import { AuthProvider } from '../lib/store';
 import { Topbar } from '../lib/topbar';
-import { PlayerBar, PlayerProvider } from '../lib/player';
+import { PlayerBar, PlayerProvider, PlayerStage } from '../lib/player';
 import './globals.css';
 
 const vazir = localFont({
@@ -30,6 +30,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }):
             <Topbar />
             <main className="page">{children}</main>
             <PlayerBar />
+            <PlayerStage />
             <footer className="foot">ریتما — احترام به موسیقی</footer>
           </PlayerProvider>
         </AuthProvider>

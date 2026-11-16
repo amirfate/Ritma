@@ -962,3 +962,55 @@ table.tbl td {
     animation: none !important;
   }
 }
+
+
+/* ---------- fullpage player stage (ported from legacy v3.4) ---------- */
+.pstage{position:fixed;inset:0;z-index:40;background:var(--bg);display:block;padding:18px 26px;overflow:hidden}
+.pstage .wrap{max-width:940px;height:100%;margin:0 auto;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:36px;align-items:stretch}
+.pstage .vside{display:flex;flex-direction:column;justify-content:center;min-height:0;gap:18px}
+.pstage h1{font-size:24px;margin-bottom:4px;unicode-bidi:plaintext}
+.pstage .artist{color:var(--muted);font-size:15px}
+.vinyl{--vs:min(330px,100%,40vh);width:var(--vs);height:var(--vs);align-self:center;justify-self:center;aspect-ratio:1;border-radius:50%;position:relative;margin-inline:auto;flex-shrink:0;box-sizing:border-box;
+  background:repeating-radial-gradient(circle at 50% 50%,var(--vinyl-a) 0 5px,var(--vinyl-b) 5px 10px);
+  box-shadow:14px 14px 30px var(--shadow-dark),-14px -14px 30px var(--shadow-light);
+  display:flex;align-items:center;justify-content:center}
+.pstage.playing .vinyl{animation:spin 8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.vinyl .label{width:34%;aspect-ratio:1;border-radius:50%;background:var(--bg);
+  box-shadow:inset 4px 4px 10px var(--shadow-dark),inset -4px -4px 10px var(--shadow-light);
+  display:flex;align-items:center;justify-content:center;font-size:38px;color:var(--accent)}
+.vring{position:absolute;inset:8px;border-radius:50%;border:3px solid transparent;
+  background:conic-gradient(var(--accent) var(--p,0%),transparent 0);
+  -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 5px),#000 calc(100% - 4px));
+          mask:radial-gradient(farthest-side,transparent calc(100% - 5px),#000 calc(100% - 4px))}
+.pclose{position:absolute;top:22px;inset-inline-start:22px}
+.lyrics{min-height:64px;max-height:24vh;overflow-y:auto;line-height:2.2;font-size:15px;padding:16px 20px;margin-top:16px;max-width:420px;color:var(--muted)}
+.l-line{opacity:.45;transition:all .35s ease;font-weight:400}
+.l-line.on{opacity:1;font-weight:800;font-size:18px;transform:scale(1.02);color:var(--ink)}
+.vcontrols{display:flex;flex-direction:column;gap:12px;align-items:center;margin:8px auto;width:fit-content;
+  padding:14px 20px;border-radius:30px}
+.vrow{display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:center}
+.nbtn.big{width:56px;height:56px;font-size:22px}
+.pstage.playing .nbtn.big{color:var(--accent);box-shadow:inset 4px 4px 9px var(--shadow-dark),inset -4px -4px 9px var(--shadow-light)}
+.spbar{width:min(360px,100%);height:12px;flex:0 0 12px;border-radius:8px;cursor:pointer}
+.spbar>div{height:100%;border-radius:8px;background:linear-gradient(to left,var(--accent),var(--accent-ink))}
+.pstage .time{font-size:12px;color:var(--muted)}
+.vol-slider{-webkit-appearance:none;appearance:none;width:110px;height:8px;border-radius:6px;cursor:pointer;
+  background:linear-gradient(to left,var(--accent) var(--vp,100%),var(--bg-deep) var(--vp,100%));
+  box-shadow:inset 2px 2px 4px var(--shadow-dark),inset -2px -2px 4px var(--shadow-light)}
+.vol-slider::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;
+  background:var(--bg);box-shadow:3px 3px 6px var(--shadow-dark),-3px -3px 6px var(--shadow-light);
+  border:2px solid var(--accent);cursor:pointer}
+@media (prefers-reduced-motion:reduce){.pstage.playing .vinyl{animation:none}}
+@media (max-width:820px){
+  .pstage{padding:14px 16px}
+  .pstage .wrap{grid-template-columns:1fr;gap:10px;padding-top:50px;align-content:start;overflow-y:auto}
+  .pstage .vside{justify-content:flex-start}
+  .vinyl{--vs:min(150px,38vw,20vh);order:-1;margin-top:0;align-self:center;justify-self:center}
+  .pstage h1{font-size:18px}
+  .pstage .artist{font-size:13px}
+  .lyrics{max-height:18vh;min-height:64px;line-height:2;font-size:14px;padding:12px 16px;margin-top:10px}
+  .vcontrols{padding:10px 12px;border-radius:24px;gap:8px;margin-top:2px}
+}
+/* expand button on player bar */
+.pb-expand{margin-inline-end:2px}
