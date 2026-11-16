@@ -72,9 +72,6 @@ export function Topbar(): ReactElement {
           <a href="/artists" onClick={() => setNavOpen(false)}>
             هنرمندان
           </a>
-          <a href="/pricing" onClick={() => setNavOpen(false)}>
-            خرید اشتراک
-          </a>
           <a href="/wallet" onClick={() => setNavOpen(false)}>
             کیف پول
           </a>

@@ -85,16 +85,23 @@ export default function PayRefPage(): ReactElement {
   if (state === 'error' || !data) return <div className="msg">تراکنش یافت نشد.</div>;
 
   return (
-    <>
-      <h1>پرداخت</h1>
-      <div className="card" style={{ maxWidth: 480 }}>
-        <p>
-          نوع: <b>{KIND_FA[data.kind] ?? data.kind}</b>
-        </p>
-        <p>
-          مبلغ: <b>{toman(data.amountIrR)}</b> تومان
-        </p>
-        <p style={{ color: 'var(--muted)' }}>شماره پیگیری: {data.ref}</p>
+    <div className="authwrap">
+      <div className="neu authbox">
+        <h2>پرداخت</h2>
+        <div className="kv">
+          <span>نوع</span>
+          <b>{KIND_FA[data.kind] ?? data.kind}</b>
+        </div>
+        <div className="kv">
+          <span>مبلغ</span>
+          <b>
+            {toman(data.amountIrR)} <span style={{ fontWeight: 400 }}>تومان</span>
+          </b>
+        </div>
+        <div className="kv">
+          <span>شماره پیگیری</span>
+          <b dir="ltr">{data.ref}</b>
+        </div>
         {data.status !== 'PENDING' ? (
           <p className="msg">
             {data.status === 'PAID' ? 'این تراکنش قبلاً پرداخت شده است.' : 'این تراکنش لغو شده است.'}
@@ -104,11 +111,11 @@ export default function PayRefPage(): ReactElement {
             <p style={{ color: 'var(--muted)' }}>
               درگاه آزمایشی بتا — با تأیید، مبلغ تسویه می‌شود.
             </p>
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button className="nbtn primary" type="button" disabled={busy} onClick={() => void confirm()}>
+            <div className="row" style={{ marginTop: 22 }}>
+              <button className="nbtn primary" type="button" style={{ flex: 1 }} disabled={busy} onClick={() => void confirm()}>
                 تأیید و پرداخت
               </button>
-              <button className="nbtn" type="button" disabled={busy} onClick={() => void cancel()}>
+              <button className="nbtn" type="button" style={{ flex: 1 }} disabled={busy} onClick={() => void cancel()}>
                 انصراف
               </button>
             </div>
@@ -116,6 +123,6 @@ export default function PayRefPage(): ReactElement {
         )}
         {message && <p className="msg">{message}</p>}
       </div>
-    </>
+    </div>
   );
 }
