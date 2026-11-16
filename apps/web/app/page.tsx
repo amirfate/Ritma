@@ -29,11 +29,11 @@ async function HomeSections(): Promise<ReactElement> {
       <section className="sec">
         <h2>آلبوم‌ها</h2>
         {albums && albums.length > 0 ? (
-          <div className="grid">
+          <div className="plcards">
             {albums.map((album) => (
-              <a key={album.id} href={`/albums/${album.slug}`} className="card">
-                <div className="cover">♫</div>
-                <h3>{album.title}</h3>
+              <a key={album.id} href={`/albums/${album.slug}`} className="neu plcard">
+                <div className="cov">♫</div>
+                <b>{album.title}</b>
                 <div className="sub">{album.artist.name}</div>
               </a>
             ))}
@@ -43,13 +43,15 @@ async function HomeSections(): Promise<ReactElement> {
         )}
       </section>
       <section className="sec">
-        <h2>هنرمندان</h2>
+        <h2>هنرمندان برتر</h2>
         {artists && artists.length > 0 ? (
-          <div className="grid">
-            {artists.map((artist) => (
-              <a key={artist.id} href={`/artists/${artist.slug}`} className="card">
-                <div className="cover">◉</div>
-                <h3>{artist.name}</h3>
+          <div className="ranking">
+            {artists.map((artist, i) => (
+              <a key={artist.id} href={`/artists/${artist.slug}`} className="rank">
+                <div className={'avatar' + (i % 2 === 0 ? ' filled' : '')}>
+                  {artist.name.trim().charAt(0)}
+                </div>
+                <span>{artist.name}</span>
               </a>
             ))}
           </div>
