@@ -144,8 +144,9 @@ export class AdminService {
     return this.audit.recent(page, take);
   }
 
-  // ===== catalog management (audio registration per locked spec: no upload
-  // UI in beta — admin places files in MEDIA_DIR and registers audioUrl) =====
+  // ===== catalog management (audio registration: admin uploads via
+  // POST /admin/upload-audio which stores into MEDIA_DIR/audio, or places
+  // files there manually and registers the audioKey) =====
 
   async createArtist(
     dto: { name: string; bio?: string; imageUrl?: string },

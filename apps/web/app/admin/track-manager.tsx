@@ -54,6 +54,8 @@ export function TrackManager(): ReactElement {
   const [audioKey, setAudioKey] = useState('');
   const [duration, setDuration] = useState('');
   const [isPremium, setIsPremium] = useState(false);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [uploadPct, setUploadPct] = useState<number | null>(null);
   // inline edit
   const [editKey, setEditKey] = useState<Record<string, string>>({});
   const [editPrice, setEditPrice] = useState<Record<string, string>>({});
@@ -122,6 +124,70 @@ export function TrackManager(): ReactElement {
     );
     if (ok) setArtistName('');
     setBusy(null);
+  }
+
+  function onFileChosen(f: File | null): void {
+    setPendingFile(f);
+    if (!f) return;
+    // auto-fill duration from the local file metadata
+    const url = URL.createObjectURL(f);
+    const probe = new Audio();
+    probe.preload = 'metadata';
+    probe.src = url;
+    probe.onloadedmetadata = () => {
+      if (Number.isFinite(probe.duration) && probe.duration > 0) {
+        setDuration(String(Math.round(probe.duration)));
+      }
+      URL.revokeObjectURL(url);
+    };
+    probe.onerror = () => URL.revokeObjectURL(url);
+  }
+
+  function uploadNow(retry = true): Promise<void> {
+    const file = pendingFile;
+    const saved = loadSavedAuth();
+    if (!file || !saved) return Promise.resolve();
+    setUploadPct(0);
+    return new Promise<void>((resolve) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', '/api/admin/upload-audio');
+      xhr.setRequestHeader('Authorization', `Bearer ${saved.token}`);
+      xhr.upload.onprogress = (ev) => {
+        if (ev.lengthComputable) setUploadPct(Math.round((ev.loaded / ev.total) * 100));
+      };
+      xhr.onload = () => {
+        setUploadPct(null);
+        if (xhr.status === 401 && retry) {
+          void refreshAccessToken().then((ok) => {
+            if (ok) void uploadNow(false);
+            else setError('نشست منقضی شده — دوباره وارد شوید');
+            resolve();
+          });
+          return;
+        }
+        try {
+          const body = JSON.parse(xhr.responseText) as { audioKey?: string; message?: string };
+          if (xhr.status >= 200 && xhr.status < 300 && body.audioKey) {
+            setAudioKey(body.audioKey);
+            setMessage('فایل آپلود شد — کلید در فرم ثبت شد');
+            setPendingFile(null);
+          } else {
+            setError(body.message ?? 'آپلود ناموفق بود');
+          }
+        } catch {
+          setError('آپلود ناموفق بود');
+        }
+        resolve();
+      };
+      xhr.onerror = () => {
+        setUploadPct(null);
+        setError('آپلود ناموفق بود');
+        resolve();
+      };
+      const fd = new FormData();
+      fd.append('file', file);
+      xhr.send(fd);
+    });
   }
 
   async function createTrack(): Promise<void> {
@@ -231,9 +297,20 @@ export function TrackManager(): ReactElement {
             </option>
           ))}
         </select>
+        <div className="uploadrow">
+          <input
+            type="file"
+            accept=".mp3,.m4a,.mp4,.flac,.aac,.ogg,audio/*"
+            disabled={uploadPct !== null}
+            onChange={(e) => onFileChosen(e.target.files?.[0] ?? null)}
+          />
+          <button type="button" className="btn solid" disabled={!pendingFile || uploadPct !== null} onClick={() => void uploadNow()}>
+            {uploadPct !== null ? `${uploadPct}٪` : 'آپلود فایل صوتی'}
+          </button>
+        </div>
         <input
           dir="ltr"
-          placeholder="audioKey مثل: audio/my-song.m4a"
+          placeholder="یا کلید دستی مثل: audio/my-song.m4a"
           value={audioKey}
           onChange={(e) => setAudioKey(e.target.value)}
         />

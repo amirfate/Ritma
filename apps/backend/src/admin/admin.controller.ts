@@ -1,4 +1,21 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
+import { randomBytes } from 'node:crypto';
+import * as fs from 'node:fs';
+import { extname } from 'node:path';
 
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -46,6 +63,45 @@ export class AdminController {
     @Body() dto: { name: string; bio?: string; imageUrl?: string },
   ) {
     return this.admin.createArtist(dto, user);
+  }
+
+  static readonly AUDIO_EXT = ['.mp3', '.m4a', '.mp4', '.flac', '.aac', '.ogg'];
+
+  /** Direct audio upload (admin-only): stores the file under MEDIA_DIR/audio and
+   *  returns the audioKey to register on a track. MinIO presigned flow later. */
+  @Post('upload-audio')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: (_req, _file, cb) => {
+          const mediaDir = process.env.MEDIA_DIR;
+          if (!mediaDir) return cb(new Error('MEDIA_DIR تنظیم نشده است'), '');
+          const dir = `${mediaDir}/audio`;
+          fs.mkdirSync(dir, { recursive: true });
+          cb(null, dir);
+        },
+        filename: (_req, file, cb) => {
+          const ext = extname(file.originalname ?? '').toLowerCase();
+          const base =
+            (file.originalname ?? 'track')
+              .slice(0, Math.max(0, (file.originalname ?? '').length - ext.length))
+              .replace(/[^\p{L}\p{N}_-]+/gu, '-')
+              .replace(/^-+|-+$/g, '')
+              .slice(0, 80) || 'track';
+          cb(null, `${Date.now()}-${randomBytes(4).toString('hex')}-${base}${ext}`);
+        },
+      }),
+      limits: { fileSize: 200 * 1024 * 1024 },
+      fileFilter: (_req, file, cb) => {
+        const ext = extname(file.originalname ?? '').toLowerCase();
+        if (!AdminController.AUDIO_EXT.includes(ext)) return cb(null, false);
+        cb(null, true);
+      },
+    }),
+  )
+  uploadAudio(@UploadedFile() file?: Express.Multer.File) {
+    if (!file) throw new BadRequestException('فایلی ارسال نشد یا فرمت آن مجاز نیست (mp3/m4a/flac/aac/ogg)');
+    return { audioKey: `audio/${file.filename}`, size: file.size, name: file.filename };
   }
 
   @Post('tracks')

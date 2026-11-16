@@ -387,6 +387,7 @@ table.tbl td {
   align-items: center;
   margin: 12px 0 26px;
 }
+.uploadrow{display:flex;gap:10px;align-items:center}.uploadrow input[type=file]{flex:1;font-size:13px;color:var(--muted)}
 .adm-form input,
 .adm-form select {
   width: auto;
