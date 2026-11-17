@@ -29,3 +29,4 @@ pnpm-debug.log*
 # build outputs
 .next/
 tsconfig.tsbuildinfo
+media/
