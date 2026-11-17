@@ -24,11 +24,11 @@ export default async function AlbumPage({
   }
   return (
     <>
-      <h1 style={{ marginTop: 12 }}>{album.title}</h1>
+      <h2 className="sec">{album.title}</h2>
       <p style={{ color: 'var(--muted)' }}>
         اثر از <a href={`/artists/${album.artist.slug}`}>{album.artist.name}</a>
       </p>
-      <div className="card" style={{ marginTop: 20 }}>
+      <div className="neu card" style={{ marginTop: 20 }}>
         {album.tracks.length === 0 && <p style={{ color: 'var(--muted)' }}>قطعه‌ای ندارد.</p>}
         <TrackList
           tracks={album.tracks.map((t) => ({

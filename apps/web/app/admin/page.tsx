@@ -116,32 +116,32 @@ export default function AdminPage(): ReactElement {
 
   return (
     <>
-      <h1>داشبورد مدیریت</h1>
+      <h2 className="sec">داشبورد مدیریت</h2>
       <div className="stat-grid">
-        <div className="stat">
+        <div className="neu stat">
           <small>کاربران بتا</small>
           <strong>
             {fa(data.beta.users)} / {fa(data.beta.userCap)}
           </strong>
           <span>{fa(data.beta.seatsLeft)} ظرفیت باقی‌مانده</span>
         </div>
-        <div className="stat">
+        <div className="neu stat">
           <small>دعوت‌های موفق</small>
           <strong>{fa(data.beta.successfulInvites)}</strong>
           <span>سقف هر کاربر: {fa(data.beta.invitesPerUser)}</span>
         </div>
-        <div className="stat">
+        <div className="neu stat">
           <small>ترک‌ها</small>
           <strong>{fa(data.tracks)}</strong>
         </div>
-        <div className="stat">
+        <div className="neu stat">
           <small>درآمد پرداخت‌شده</small>
           <strong>{toman(data.revenueIrR)} تومان</strong>
           <span>{fa(data.paidOrders)} سفارش پرداخت‌شده</span>
         </div>
       </div>
 
-      <h2>کاربران</h2>
+      <h2 className="sec">کاربران</h2>
       <table className="tbl">
         <thead>
           <tr>
@@ -165,7 +165,7 @@ export default function AdminPage(): ReactElement {
         </tbody>
       </table>
 
-      <h2>دستگاه‌های فعال</h2>
+      <h2 className="sec">دستگاه‌های فعال</h2>
       {data.activeDevices.length === 0 ? (
         <p className="muted">دستگاه فعالی ثبت نشده است.</p>
       ) : (
@@ -195,7 +195,7 @@ export default function AdminPage(): ReactElement {
         </table>
       )}
 
-      <h2>گزارش عملیات (Audit Log)</h2>
+      <h2 className="sec">گزارش عملیات (Audit Log)</h2>
       {audit && audit.length > 0 ? (
         <table className="tbl">
           <thead>
@@ -225,7 +225,7 @@ export default function AdminPage(): ReactElement {
       )}
 
       <section className="sec">
-        <h2>درخواست‌های تسویه</h2>
+        <h2 className="sec">درخواست‌های تسویه</h2>
         <p className="muted">موجودی کل کیف پول کاربران: {toman(data.walletSumIrR)} تومان</p>
         {data.payouts.length > 0 ? (
           <table className="tbl">

@@ -30,7 +30,7 @@ export default function RegisterPage(): ReactElement {
   return (
     <div className="authwrap">
       <form className="neu authbox form" onSubmit={(event) => void onSubmit(event)}>
-      <h1>ساخت حساب ریتما</h1>
+      <h2>ساخت حساب ریتما</h2>
       <label htmlFor="name">نام نمایشی</label>
       <input
         id="name"

@@ -148,13 +148,13 @@ export default function AccountPage(): ReactElement {
 
   return (
     <>
-      <h1>حساب من</h1>
+      <h2 className="sec">حساب من</h2>
       <p className="muted">
         {user.name} — <span dir="ltr">{user.email}</span>
       </p>
       {message && <div className="msg">{message}</div>}
 
-      <h2>دستگاه‌های من ({fa(activeDevices.length)} فعال)</h2>
+      <h2 className="sec">دستگاه‌های من ({fa(activeDevices.length)} فعال)</h2>
       <p className="muted">
         حداکثر ۲ دستگاه فعال — اگر جایی لاگین کرده‌ای و دیگر از آن استفاده نمی‌کنی، آن را باطل کن تا
         جا باز شود. باطل کردن دستگاه، همه‌ی نشست‌های آن را بیرون می‌اندازد.
@@ -199,7 +199,7 @@ export default function AccountPage(): ReactElement {
         <p className="muted">دستگاهی ثبت نشده است.</p>
       )}
 
-      <h2>دعوت‌های من</h2>
+      <h2 className="sec">دعوت‌های من</h2>
       <p className="muted">
         تا سقف ۱۰ دعوتِ موفق می‌توانی دوستانت را وارد بتا کنی. کد را برایشان بفرست و آن‌ها در صفحه‌ی
         ثبت‌نام وارد کنند.

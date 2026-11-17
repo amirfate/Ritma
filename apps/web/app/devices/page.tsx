@@ -84,13 +84,13 @@ export default function DevicesPage(): ReactElement {
 
   return (
     <>
-      <h2>دستگاه‌های من</h2>
+      <h2 className="sec">دستگاه‌های من</h2>
       <p className="muted">
         حداکثر ۲ دستگاه فعال برای هر کاربر مجاز است. با لغو یک دستگاه، ورود خودکار آن بسته می‌شود و باید از آن دستگاه دوباره وارد شوید.
       </p>
       {message && <div className="msg">{message}</div>}
       {rows && rows.length > 0 ? (
-        <div className="card">
+        <div className="neu card">
           {rows.map((d) => (
             <div key={d.id} className="track-row" style={{ cursor: 'default' }}>
               <span className="t-name">

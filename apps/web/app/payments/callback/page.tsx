@@ -39,27 +39,27 @@ function CallbackInner(): ReactElement {
   }
   if (phase === 'ok') {
     return (
-      <div className="msg">
-        <h1 style={{ marginTop: 0 }}>✅ پرداخت موفق</h1>
+      <div className="authwrap"><div className="neu authbox" style={{ textAlign: 'center' }}>
+        <h2>✅ پرداخت موفق</h2>
         <p style={{ color: 'var(--muted)' }}>
           اشتراک ویژه‌ی شما فعال شد. از آثار ویژه لذت ببرید!
         </p>
         <a href="/" className="btn solid">
           بازگشت به خانه
         </a>
-      </div>
+      </div></div>
     );
   }
   return (
-    <div className="msg">
-      <h1 style={{ marginTop: 0 }}>پرداخت ناموفق</h1>
+    <div className="authwrap"><div className="neu authbox" style={{ textAlign: 'center' }}>
+      <h2>پرداخت ناموفق</h2>
       <p style={{ color: 'var(--muted)' }}>
         تراکنش تکمیل نشد یا توسط شما لغو شد. می‌توانید دوباره تلاش کنید.
       </p>
       <a href="/" className="btn">
         بازگشت به صفحه‌ی اصلی
       </a>
-    </div>
+    </div></div>
   );
 }
 

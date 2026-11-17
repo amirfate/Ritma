@@ -23,8 +23,8 @@ function MockPayInner(): ReactElement {
   }
 
   return (
-    <div className="msg">
-      <h1 style={{ marginTop: 0 }}>درگاه پرداخت آزمایشی</h1>
+    <div className="authwrap"><div className="neu authbox">
+      <h2>درگاه پرداخت آزمایشی</h2>
       <p style={{ color: 'var(--muted)' }}>{note}</p>
       <p style={{ color: 'var(--muted)', fontSize: 13 }}>
         این صفحه فقط برای محیط توسعه است. در تولید، درگاه واقعی (مثلاً زرین‌پال) جای آن را می‌گیرد.
@@ -37,6 +37,7 @@ function MockPayInner(): ReactElement {
           انصراف
         </button>
       </div>
+    </div>
     </div>
   );
 }

@@ -28,7 +28,7 @@ export default function LoginPage(): ReactElement {
   return (
     <div className="authwrap">
       <form className="neu authbox form" onSubmit={(event) => void onSubmit(event)}>
-      <h1>ورود به ریتما</h1>
+      <h2>ورود به ریتما</h2>
       <label htmlFor="email">ایمیل</label>
       <input
         id="email"
